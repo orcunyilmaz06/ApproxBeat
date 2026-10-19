@@ -25,7 +25,13 @@ Changing the protocol requires an entry in `decisions.md`.
    and 217 are paced).
 7. **One parameter set.** `ab_params` applies to every record. Nothing is tuned per record.
 8. **Comparing variants** (float against integer, or approximate designs). Report the gross
-   statistics of both and list every record whose FN or FP changed. Record 228 sits at a
-   tipping point of the searchback (D12), so a swing there alone is not evidence of an
-   arithmetic effect. Input dither of +/-1 LSB moves the gross DER by about 0.003 pp
-   (`results/int_study.md`, section 3); smaller differences are noise.
+   statistics of both and list every record whose FN or FP changed. Before D14, record 228
+   sat at a tipping point of the searchback (D12), and a swing there alone was not evidence
+   of an arithmetic effect. Input dither of +/-1 LSB sets the noise floor for gross
+   differences (`results/int_study.md`, section 3).
+9. **Design set and held-out set.** Any choice between algorithm variants or parameter
+   values is made on DS1 alone, by a rule written down before the run. The result is
+   then reported on DS2 and on all 48 records. DS1 and DS2 are the standard 22 + 22 split
+   of the non-paced records (de Chazal et al., IEEE TBME 51(7), 2004), listed in
+   `ab_records`. Results from before this rule (D1-D13) were chosen on all records and
+   are labelled as such.

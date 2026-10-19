@@ -45,6 +45,11 @@ MWI is a sum, not a mean: every decision compares MWI values with each other, so
   analytic worst-case width (`ab_int_widths`), so approximations happen only at memoryless
   points (the `sq` shift and saturation), and the vectorised model stays exact.
 
+The first two rules make the integer model arithmetically closest to the float model.
+Since the outlier-clipped SPKI (D14), neither shows in the gross statistics on its own
+(see the updates under D9 and D10). They define the high-precision reference that the
+approximate variants are measured against.
+
 ## Decision logic (once per sample)
 
 1. **Peak detector.** Track the running maximum of `mwi`. It becomes a *peak* when `mwi`
@@ -58,8 +63,9 @@ MWI is a sum, not a mean: every decision compares MWI values with each other, so
 3. **Classification.** A peak within 200 ms of the last QRS is ignored. Any other peak is
    a **QRS** if it is above `THR1` and is not a T wave. A T wave is a peak within 360 ms
    of the last QRS whose slope is less than half of that QRS's slope (`sq < last_sq >> 2`).
-   Every other peak is a **noise peak**. A QRS updates `SPKI += (peak - SPKI) >> 3`, a
-   noise peak updates `NPKI += (peak - NPKI) >> 3`, and then
+   Every other peak is a **noise peak**. A QRS updates
+   `SPKI += (min(peak, SPKI + SPKI >> 2) - SPKI) >> 3`. The clip bounds the step one
+   large beat can take (D14). A noise peak updates `NPKI += (peak - NPKI) >> 3`. Then
    `THR1 = NPKI + ((SPKI - NPKI) >> 2)` and `THR2 = THR1 >> 1`.
 4. **Searchback.** The largest noise peak above `THR2` since the last QRS, T waves excluded,
    is kept as a candidate. If no QRS arrives for `RR + RR>>1 + RR>>3 + RR>>5` samples
@@ -80,6 +86,7 @@ example `dt = age(last QRS) - age(peak)`. Nothing in the logic needs an absolute
 | T-wave window | 72 samples | counter compare | 360 ms |
 | peak confirmation | `mwi < max >> 1` or 40 samples | shift, compare, counter | "signal changes direction" |
 | SPKI / NPKI update | `+= (peak - level) >> 3` | shift, add | 0.125 / 0.875 |
+| SPKI outlier clip | peak clipped to 1.25 x SPKI | `SPKI + SPKI>>2`, min | none |
 | searchback SPKI update | `+= (peak - SPKI) >> 2` | shift, add | 0.25 / 0.75 |
 | THR1, THR2 | `NPKI + (SPKI - NPKI) >> 2`, `THR1 >> 1` | shift, add | same |
 | T-wave slope test | `sq < last_sq >> 2` | shift, compare | slope < 1/2 |
@@ -99,6 +106,7 @@ example `dt = age(last QRS) - age(peak)`. Nothing in the logic needs an absolute
 | 6 | one RR average (EMA, 1/8), no irregular-rhythm threshold halving | RR AVERAGE1/2 with 92-116 % limits | one register instead of 16 words |
 | 7 | 0.64 s blanking + 1.28 s learning | 2 s learning | power-of-two window, `sum >> 8` |
 | 8 | derivative's 1/8 after the squarer, rounded to nearest, `sq` saturated | `der >> 3`, then square (C code) | precision for small beats, no MWI bias (D9-D11) |
+| 9 | QRS peak clipped to 1.25 x SPKI before the SPKI update | unclipped | large PVCs and artifacts cannot push THR2 above small beats; removes the D12 tipping point (D14) |
 
 ## State inventory
 

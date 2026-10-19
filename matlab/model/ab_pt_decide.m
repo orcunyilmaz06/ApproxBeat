@@ -13,7 +13,8 @@ function det = ab_pt_decide(s, p)
 %      initialise the signal and noise peak levels SPKI and NPKI.
 %   3. Every peak outside the 200 ms refractory period is a QRS if it is above
 %      THR1 and not a T wave (a peak within 360 ms of the last QRS with less than
-%      half of its slope); otherwise it is a noise peak.
+%      half of its slope); otherwise it is a noise peak. With p.spk_clip_shifts
+%      set, a QRS peak enters SPKI clipped to a multiple of SPKI.
 %   4. Searchback: when no QRS was found for 1.656 x the RR average, the largest
 %      noise peak above THR2 since the last QRS becomes the missed QRS.
 %   Pan & Tompkins, IEEE TBME 32(3):230-236, 1985. Deviations: docs/algorithm.md.
@@ -114,7 +115,13 @@ for n = 1:N
             twave = dt < p.twave_win && c_slope < shr(last_slope, 2, is_int);   % slope < 1/2
             if c_val > thr1 && ~twave
                 cls = 1;
-                spk = spk + shr(c_val - spk, p.k_pk, is_int);
+                pk_in = c_val;
+                if ~isempty(p.spk_clip_shifts)            % bounded step for large beats
+                    lim = 0;
+                    for k = p.spk_clip_shifts, lim = lim + shr(spk, k, is_int); end
+                    pk_in = min(pk_in, lim);
+                end
+                spk = spk + shr(pk_in - spk, p.k_pk, is_int);
                 found = 1; f_age = c_age; f_slope = c_slope; f_r_age = c_r_age;
             else
                 cls = 2 + twave;

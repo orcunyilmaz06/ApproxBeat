@@ -9,8 +9,9 @@ Shuttle dates were checked against <https://tinytapeout.com/runs> on 2026-10-19.
 - **Week 2, ahead of schedule (2026-10-19).**
   - Done: the bit-accurate integer model, the dynamic-range study, the register inventory and
     a first word-length / accuracy grid (`results/int_study.md`).
-  - Still open in week 2: a robust searchback, because record 228 sits at a tipping point
-    (D12). Also the golden-vector format for cocotb and the WSL2 toolchain.
+  - Robust searchback (D14), done. It was chosen on DS1 and confirmed on the held-out DS2,
+    and record 228 is no longer a tipping point (`results/searchback_study.md`).
+  - Still open in week 2: the golden-vector format for cocotb and the WSL2 toolchain.
 
 ## Shuttles
 

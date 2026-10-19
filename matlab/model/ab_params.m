@@ -52,7 +52,11 @@ p.age_bits   = 11;        % event positions are saturating age counters (2047 = 
 %   missed beat    no QRS for sum(RR >> rr_missed_shifts) = 1.656 RR   (paper: 1.66 RR)
 %   initial levels SPKI = sum(max >> spk_init_shifts) = 0.3125 max (common choice: 1/3)
 %                  NPKI = mean >> npk_init_shift      = mean / 2   (common choice: 1/2)
+%   outlier clip   a QRS peak enters SPKI clipped to SPKI + SPKI >> 2 = 1.25 SPKI, so
+%                  one large beat raises SPKI by at most 3 %; chosen on DS1 (D14;
+%                  [] = no clip, as in the paper)
 p.k_pk             = 3;
+p.spk_clip_shifts  = [0 2];
 p.k_sb             = 2;
 p.k_thr            = 2;
 p.rr_missed_shifts = [0 1 3 5];

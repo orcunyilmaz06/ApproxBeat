@@ -15,9 +15,9 @@ Tapeout chip.
 |---|---|
 | Data pipeline: WFDB readers, 200 Hz / 11-bit ADC model | done; verified against the WFDB checksums of all 48 records |
 | Float reference model: streaming Pan-Tompkins | done; results below |
-| Bit-accurate integer model | done; within 0.01 pp of the float model, 1,403 flip-flops; results below |
-| Robust searchback (record 228 tipping point) | next |
-| RTL (Verilog) and cocotb regression | planned |
+| Bit-accurate integer model | done; same Se / +P as the float model, 1,403 flip-flops; results below |
+| Robust searchback (record 228 tipping point) | done; chosen on DS1, confirmed on held-out DS2 |
+| Golden vectors, RTL (Verilog) and cocotb regression | next |
 | LibreLane: IHP SG13G2 / GF180 | planned |
 | Tiny Tapeout | target TTGF26c, closes 2026-12-07 |
 
@@ -30,11 +30,14 @@ All 48 records, full 30 minutes each, 150 ms match window. The numbers below com
 
 | Set | Beats | Se (%) | +P (%) | DER (%) |
 |---|---:|---:|---:|---:|
-| all 48 records | 109,494 | 99.63 | 99.80 | 0.56 |
-| 44 non-paced records | 100,733 | 99.62 | 99.79 | 0.59 |
+| all 48 records | 109,494 | 99.68 | 99.78 | 0.54 |
+| 44 non-paced records | 100,733 | 99.67 | 99.76 | 0.57 |
+| DS1, design set (22 records) | 51,021 | 99.58 | 99.70 | 0.72 |
+| DS2, held-out set (22 records) | 49,712 | 99.76 | 99.82 | 0.41 |
 
 Pan & Tompkins reported 99.3 % on this database (one minus the failed-detection rate). The
-same figure here is 99.44 %. Of the 404 missed beats, 98 fall in the 1.92 s startup window.
+same figure here is 99.46 %. Of the 348 missed beats, 98 fall in the 1.92 s startup window.
+Algorithm choices are made on DS1 and checked on DS2 (`docs/eval_protocol.md`, item 9).
 The hardest record is 108: large P waves arrive about 200 ms before each QRS, just
 outside the refractory period, and get counted as beats (second figure).
 
@@ -50,26 +53,31 @@ by rounding. Source: [results/int_study.md](results/int_study.md).
 
 | Model | Se (%) | +P (%) | DER (%) | Flip-flops |
 |---|---:|---:|---:|---:|
-| float (`ab_pt_float`) | 99.63 | 99.80 | 0.564 | |
-| integer (`ab_pt_int`) | 99.62 | 99.80 | 0.572 | 1,403 |
+| float (`ab_pt_float`) | 99.68 | 99.78 | 0.540 | |
+| integer (`ab_pt_int`) | 99.68 | 99.78 | 0.544 | 1,403 |
 
 What it took to get there, and what it showed:
 
-- **Round late, and round to nearest.** Pan & Tompkins' integer code truncates the
-  derivative before squaring. That costs 0.12 pp of DER, because the small derivatives of
-  low-amplitude beats lose most of their precision. Squaring first and rounding the shift
-  to nearest closes the gap.
 - **Storage dominates, not the multiplier.** The four delay lines hold 75 % of the
   flip-flops ([results/state_inventory.md](results/state_inventory.md)). The squared
   derivative needs 22 bits in the worst case but only 16 bits on MIT-BIH.
-- **A first trade-off, with a surprise.** Saturating the squared derivative below its
-  data maximum *improves* accuracy slightly while saving up to 18 % of the flip-flops:
-  10 bits instead of 16 give 1,157 flip-flops and DER 0.550 %. The likely reason is that
-  clipping stops large PVCs from inflating the adaptive threshold. This was found on the
-  test records themselves, so it still needs a held-out check (D13).
-- **A tipping point.** Record 228 (bigeminy) flips between 20 and 222 missed beats under
-  tiny systematic changes, while input noise does not move it. Approximate-arithmetic
-  results have to be read with that in mind until the searchback is made robust (D12).
+- **A tipping point, found and removed.** At first, the integer model's accuracy depended
+  on rounding details. Across six rounding variants the gross DER ranged from 0.572 % to
+  0.747 %, and almost all of that came from one record. In 228 (bigeminy), large PVCs
+  inflate the adaptive threshold until the small normal beats are lost for good, and its
+  missed beats swung between 20 and 216 (D12). The fix clips each QRS peak to 1.25 x the signal level
+  before it enters the running average, which costs a shift, an adder and a min. It was
+  chosen on DS1 and improves the held-out DS2, where DER falls from 0.430 % to 0.412 %
+  and record 228 from 20 to 3 missed beats. Record 228 now gives 3 under every rounding
+  ([results/searchback_study.md](results/searchback_study.md), D14).
+- **A robust detector tolerates short words.** After the fix, the stored squared
+  derivative fits in 8 bits instead of 22 (4 LSBs dropped, 4 MSBs clipped). DER is
+  0.542 % against 0.544 %, and the design needs 1,075 flip-flops instead of 1,403
+  (-23 %). This is exploratory, over all 48 records, and still needs the DS1/DS2 check
+  ([results/int_study.md](results/int_study.md) section 4b, D13).
+- **Rounding details stopped mattering.** All six rounding variants now give DER
+  0.513-0.547 %, including Pan & Tompkins' own truncate-then-square. Its 12-bit squarer
+  is the first approximate-multiplier candidate (D9).
 
 ## Quick start
 

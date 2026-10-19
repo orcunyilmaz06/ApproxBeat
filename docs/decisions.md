@@ -1,7 +1,9 @@
 # Decision log
 
 One entry per algorithm or protocol decision: what was decided, why, and the measured
-effect where there is one. Newest at the bottom.
+effect where there is one. Newest at the bottom. Each entry cites the results files as
+they were when it was written, and git history keeps those versions: D1-D7 at commit
+3a535a3, D8-D13 at 60b857a. Later changes are added as updates under the entry.
 
 ## 2026-10-19: D1. Run the detector at 200 Hz on resampled MIT-BIH
 
@@ -75,6 +77,13 @@ sees the full derivative and the combined scaling is one `>> 6` after it. In
 rounded). Cost: the squarer grows from 12 x 12 to 15 x 15 bits. No delay line grows,
 because the derivative is not stored.
 
+*Update after D14.* With the outlier-clipped SPKI, configuration A is no worse than B:
+DER 0.513 % against 0.544 % on all 48 records (`int_study.md`, section 2). This is not a
+DS1 choice. B's measured advantage had come through the record-228 tipping point, not
+through the precision gain itself. B stays the baseline as the high-precision reference
+for the approximation study. A, with its 12-bit squarer instead of 15 bits, is the first
+approximate-multiplier candidate.
+
 ## 2026-10-19: D10. Round to nearest at the squarer shift
 
 Truncation lowers every `sq` by half an LSB on average, and the MWI sums 30 of them, a
@@ -83,6 +92,13 @@ one constant adder. Truncated, configuration B gives DER 0.593 % and 48 FN in re
 rounded, it gives 0.572 % and 20 FN, the same as the float model (`int_study.md`,
 sections 2 and 4a). With rounding, the decision logic's own rounding no longer changes
 record 228 (last column of section 2).
+
+*Update after D14.* Truncated and rounded now give 0.545 % and 0.544 %, so the bias no
+longer shows in the gross statistics. Rounding stays in the baseline because it keeps
+the reference unbiased. When many LSBs are dropped, truncation is even better: with 6
+dropped, it gives 0.737 % against 0.959 % rounded (section 4a). The likely reason is that
+truncation zeroes small noise, acting as a dead zone. That makes it an approximation
+worth testing in its own right.
 
 ## 2026-10-19: D11. Saturate the squared derivative at 16 bits
 
@@ -126,3 +142,44 @@ The finding is not adopted as the baseline, because the grid was evaluated on th
 records it would be judged on. It is the leading candidate for the v1 tape-out if area is
 tight. Confirm it on a held-out split first, such as the AAMI DS1/DS2 record split: choose
 on DS1, report on DS2.
+
+*Update after D14.* With the outlier-clipped SPKI, clipping MSBs no longer improves
+accuracy much: DER is 0.535 % against 0.544 % with 4 clipped bits. That fits the idea that
+both act through the same mechanism. Clipping stays free, though. With 4 MSBs clipped and
+4 LSBs dropped, `sq` fits in 8 bits, the design needs 1,075 flip-flops (-23 %), and DER is
+0.542 % (`int_study.md`, section 4b; all 48 records, not yet a DS1 choice). Clipping 6 MSBs
+still costs +P, which falls to about 97.9 %.
+
+## 2026-10-19: D14. Outlier-clipped signal level (SPKI)
+
+**Rule.** A QRS peak enters the SPKI update clipped to 1.25 x SPKI:
+
+    SPKI += (min(peak, SPKI + SPKI >> 2) - SPKI) >> 3
+
+One large beat can now raise SPKI by at most 3 %. Small beats still pull it down at full
+speed. Hardware cost: a shift, an adder and a min, with no new register.
+
+**Why.** D12's absorbing state starts when large PVCs pull SPKI up in big steps. With
+the paper's update, a single PVC 30 times the size of the normal beats raises SPKI by
+almost four times the normal-beat level. Bounding the step keeps the threshold in reach
+of the small beats as long as the detector is tracking them. The same bound protects
+against one huge artifact counted as a QRS.
+
+**Choice.** Made on DS1 alone, with a rule fixed in advance: lowest DS1 DER, ties within
+0.01 pp go to the weaker clip. The candidates were no clip, 2 x, 1.5 x and 1.25 x, and
+1.25 x won (`results/searchback_study.md`). The float model on the held-out DS2:
+
+- DER falls from 0.430 % to 0.412 %. Se rises from 99.71 to 99.76 %, +P drops from 99.85
+  to 99.82 %.
+- Record 228, which is in DS2, falls from 20 to 3 FN.
+
+**Robustness.** Across the six rounding configurations of the integer model, record
+228's FN count spread falls from 20-216 to 3-3, and the spread of the gross DER from
+0.175 pp to 0.034 pp. The tipping point of D12 is gone, so arithmetic variants can now be
+compared on their own merit.
+
+**Limitation.** The clip bounds the step size. It does not repair a wrong start: a
+record that begins in such bigeminy gets its SPKI from a PVC in the learning window, and
+the small beats stay lost (`test_detector`, comment in
+`test_bigeminy_with_small_normal_beats`). A fix would need a way to lower SPKI without a
+QRS, for example a slow decay. That is left for later.

@@ -28,7 +28,7 @@ if o.verbose, say = @fprintf; else, say = @(varargin) []; end
 o.tag = char(o.tag);
 p = o.params;
 tol = 0.150;                                     % EC57 match window (s)
-[~, paced] = ab_records();
+[~, paced, ds1, ds2] = ab_records();
 
 rec = o.records(:);
 nr = numel(rec);
@@ -75,6 +75,10 @@ T = table(rec, lead, beats, tp, fn, fp, se_pct, ppv_pct, err_ms, err_sd_ms, sb, 
 not_paced = ~ismember(rec, paced);
 G = [gross_row(sprintf('all %d records', nr), T, true(nr, 1));
      gross_row(sprintf('%d non-paced records', nnz(not_paced)), T, not_paced)];
+if all(ismember(ds1, rec)) && all(ismember(ds2, rec))
+    G = [G; gross_row('DS1 (design set)', T, ismember(rec, ds1));
+            gross_row('DS2 (held-out set)', T, ismember(rec, ds2))];
+end
 
 say('\n%-22s %7s %6s %5s %5s %7s %7s %7s %7s\n', 'set', 'beats', 'TP', 'FN', 'FP', ...
     'Se%', '+P%', 'F1%', 'DER%');

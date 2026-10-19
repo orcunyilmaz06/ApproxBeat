@@ -22,9 +22,10 @@ A stage counts as correct only after its check against the stage before it passe
 Float and integer models share one code path (`ab_pt_detect`, `p.arith`). Keep it that way,
 so that a float/int difference can only come from rounding.
 
-Record 228 sits at a tipping point of the searchback logic: tiny systematic changes move
-its FN count by up to ~200 (D12). When comparing variants, look at the per-record changes
-and do not read a 228 swing as an arithmetic effect.
+Until D14, record 228 sat at a tipping point of the searchback: tiny systematic changes
+moved its FN count by ~200 (D12). The outlier-clipped SPKI update removed it
+(`results/searchback_study.md`). When comparing variants, still list the per-record
+changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.md`, item 9).
 
 ## Rules
 
@@ -56,6 +57,8 @@ and do not read a 228 swing as an arithmetic effect.
   `matlab -batch "cd('matlab'); ab_setup; ab_run_eval"`
 - Integer model study (~10 min; regenerates both baselines, `range_study`, `state_inventory`,
   `wordlength_grid` and `int_study`): `matlab -batch "cd('matlab'); ab_setup; ab_int_study"`
+- Searchback study (~6 min; candidates for the SPKI clip, DS1 choice, robustness):
+  `matlab -batch "cd('matlab'); ab_setup; ab_searchback_study"`
 - README figures: `matlab -batch "cd('matlab'); ab_setup; ab_make_figures"`
 - Download data (~98 MB; PhysioNet is slow, ~20-40 min):
   `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\get_mitdb.ps1`

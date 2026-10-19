@@ -1,0 +1,24 @@
+# MIT-BIH data: downloaded by scripts/get_mitdb.ps1, never committed
+data/
+
+# MATLAB
+*.asv
+*.mex*
+slprj/
+
+# Python / cocotb (planned)
+__pycache__/
+*.pyc
+.venv/
+sim_build/
+results.xml
+*.vcd
+*.fst
+
+# LibreLane / OpenROAD runs (planned)
+flow/**/runs/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/

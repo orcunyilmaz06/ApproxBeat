@@ -17,7 +17,8 @@ Tapeout chip.
 | Float reference model: streaming Pan-Tompkins | done; results below |
 | Bit-accurate integer model | done; same Se / +P as the float model, 1,403 flip-flops; results below |
 | Robust searchback (record 228 tipping point) | done; chosen on DS1, confirmed on held-out DS2 |
-| Golden vectors, RTL (Verilog) and cocotb regression | next |
+| Golden vectors for the RTL: format, full set, committed smoke set | done ([docs/golden_vectors.md](docs/golden_vectors.md)) |
+| RTL (Verilog) and cocotb regression | next |
 | LibreLane: IHP SG13G2 / GF180 | planned |
 | Tiny Tapeout | target TTGF26c, closes 2026-12-07 |
 
@@ -115,8 +116,9 @@ matlab/
   io/      WFDB header, signal and annotation readers, resampler, record loader
   model/   ab_params (every constant), ab_pt_filters, ab_pt_decide, ab_pt_detect,
            ab_pt_float / ab_pt_int, ab_int_widths (word lengths), ab_state_inventory
-  eval/    beat matching, scoring (ab_run_eval), integer study, range study, plots
+  eval/    beat matching, scoring (ab_run_eval), studies, golden vectors, plots
   tests/   unit tests, run by ab_test
+tb/vectors/  golden-vector smoke set for the RTL testbench (committed)
 scripts/   get_mitdb.ps1: download and SHA-256 check
 docs/      algorithm spec, evaluation protocol, decision log, roadmap
 results/   written by scripts, never edited by hand

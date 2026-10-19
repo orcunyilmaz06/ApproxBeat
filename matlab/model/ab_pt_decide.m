@@ -26,9 +26,16 @@ function det = ab_pt_decide(s, p)
 %
 %   det.sample - 0-based R-peak estimate: position of the largest |hp| - p.r_delay
 %   det.kind   - 1 threshold detection, 2 searchback detection
-%   det.peaks  - every classified MWI peak: [0-based MWI index, value, class, THR1],
-%                class 0 refractory, 1 QRS, 2 noise, 3 T wave, 4 taken by searchback;
-%                THR1 is the threshold the peak was compared with
+%   det.peaks  - one row per classified MWI peak:
+%                [index, value, class, THR1 used, n, age, SPKI, NPKI, THR1]
+%                index = 0-based MWI position of the peak, n = 0-based sample at which
+%                it was confirmed and classified (index = n - age); class 0 refractory,
+%                1 QRS, 2 noise, 3 T wave, 4 later taken by searchback; the last three
+%                columns are the levels after the classification
+%   det.events - one row per QRS decision, in order (golden vectors for the RTL):
+%                [n, r_age, kind, SPKI, NPKI, THR1, RR limit]; n = 0-based sample at
+%                which it was declared, r_age = samples back to its R peak in hp
+%                (det.sample = n - r_age - p.r_delay), levels after the update
 
 is_int  = strcmp(p.arith, 'int');
 mwi = s.mwi; sq = s.sq; ahp = abs(s.hp);
@@ -55,8 +62,8 @@ rr_lim = rr_limit(p.rr_init, p, is_int);
 sb_valid = false; sb_val = 0; sb_age = 0; sb_slope = 0; sb_r_age = 0; sb_row = 0;
 f_age = 0; f_slope = 0; f_r_age = 0;
 
-qrs   = zeros(ceil(N / p.refractory) + 1, 2); nq = 0;
-peaks = zeros(ceil(N / 2), 4);              np = 0;
+qrs   = zeros(ceil(N / p.refractory) + 1, 7); nq = 0;
+peaks = zeros(ceil(N / 2), 9);              np = 0;
 
 for n = 1:N
     % age counters: samples since each event, as of this sample
@@ -133,7 +140,7 @@ for n = 1:N
             end
             [thr1, thr2] = thresholds(spk, npk, p, is_int);
         end
-        peaks(np, :) = [n - c_age - 1, c_val, cls, thr_used];
+        peaks(np, :) = [n - c_age - 1, c_val, cls, thr_used, n - 1, c_age, spk, npk, thr1];
     end
 
     % 4. searchback
@@ -161,12 +168,13 @@ for n = 1:N
         have_qrs = true; qrs_age = f_age; last_slope = f_slope;
         sb_valid = false;
         nq = nq + 1;
-        qrs(nq, :) = [n - f_r_age, found];
+        qrs(nq, :) = [n - 1, f_r_age, found, spk, npk, thr1, rr_lim];
     end
 end
 
-det.sample = qrs(1:nq, 1) - 1 - p.r_delay;
-det.kind   = qrs(1:nq, 2);
+det.events = qrs(1:nq, :);
+det.sample = det.events(:, 1) - det.events(:, 2) - p.r_delay;
+det.kind   = det.events(:, 3);
 det.peaks  = peaks(1:np, :);
 end
 

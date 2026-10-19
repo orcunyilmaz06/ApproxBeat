@@ -15,7 +15,7 @@ keep every claim checkable.
 |---|---|---|---|
 | Float model | `matlab/model/ab_pt_float.m` | MIT-BIH reference annotations | Se, +P per `docs/eval_protocol.md` |
 | Integer model | `matlab/model/ab_pt_int.m` | float model | accuracy delta measured and reported (`results/int_study.md`) |
-| RTL | `rtl/` (planned) | integer-model golden vectors | bit-exact at every stage, all 48 records |
+| RTL | `rtl/` (planned) | integer-model golden vectors (`docs/golden_vectors.md`) | bit-exact at every stage, all 48 records |
 | GDS | `flow/` (planned) | RTL, gate-level simulation | DRC/LVS clean, timing met |
 
 A stage counts as correct only after its check against the stage before it passes.
@@ -33,7 +33,8 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
    docs or report must come from a results file that a script in this repo generated, and
    should cite that file. When a number changes, regenerate it. Never edit it by hand.
 2. After changing `matlab/model/` or `matlab/eval/`, run the unit tests and the full
-   evaluation, then report how gross Se / +P moved (before -> after).
+   evaluation, then report how gross Se / +P moved (before -> after). Regenerate the
+   committed smoke vectors with `ab_write_golden('smoke')`, or `test_golden` fails.
 3. After changing RTL, run the cocotb regression against the golden vectors. Zero
    mismatches is the only passing result.
 4. **The model is a hardware specification.** Keep it causal and sample-by-sample, with
@@ -59,6 +60,9 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
   `wordlength_grid` and `int_study`): `matlab -batch "cd('matlab'); ab_setup; ab_int_study"`
 - Searchback study (~6 min; candidates for the SPKI clip, DS1 choice, robustness):
   `matlab -batch "cd('matlab'); ab_setup; ab_searchback_study"`
+- Golden vectors for the RTL (format: `docs/golden_vectors.md`). Full set, all 48 records
+  to `data/golden` (~410 MB, ~20 s): `matlab -batch "cd('matlab'); ab_setup; ab_write_golden"`.
+  Smoke set to `tb/vectors` (committed): `... ab_write_golden('smoke')`.
 - README figures: `matlab -batch "cd('matlab'); ab_setup; ab_make_figures"`
 - Download data (~98 MB; PhysioNet is slow, ~20-40 min):
   `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\get_mitdb.ps1`

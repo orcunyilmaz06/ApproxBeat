@@ -4,10 +4,10 @@ function [det, s] = ab_pt_detect(adu, p)
 %   using the arithmetic in p.arith ('float' or 'int'); see ab_pt_float, ab_pt_int.
 %   det.sample - 0-based sample index of each detected R peak
 %   det.kind   - 1 above threshold, 2 found by searchback
-%   det.peaks  - all MWI peaks seen by the decision logic (see ab_pt_decide)
+%   det.peaks, det.events - decision log (see ab_pt_decide), not trimmed to the record
 %   [det, s] = AB_PT_DETECT(...) also returns the filter-chain signals (ab_pt_filters).
 n   = numel(adu);
-adu = [adu(:); repmat(adu(end), p.fs, 1)];   % 1 s flush so the last beat completes
+adu = ab_pt_stream(adu, p);                  % 1 s flush so the last beat completes
 s   = ab_pt_filters(adu, p);
 det = ab_pt_decide(s, p);
 keep = det.sample >= 0 & det.sample < n;

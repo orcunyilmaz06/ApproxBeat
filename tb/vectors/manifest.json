@@ -1,0 +1,117 @@
+{
+  "format": "ApproxBeat golden vectors, version 1 (docs/golden_vectors.md)",
+  "model": "ab_pt_int",
+  "columns": {
+    "samples": [
+      "adu",
+      "lp",
+      "hp",
+      "der",
+      "sq",
+      "mwi"
+    ],
+    "peaks": [
+      "index",
+      "value",
+      "class",
+      "thr1_used",
+      "n",
+      "age",
+      "spk",
+      "npk",
+      "thr1"
+    ],
+    "beats": [
+      "n",
+      "r_age",
+      "kind",
+      "spk",
+      "npk",
+      "thr1",
+      "rr_lim"
+    ]
+  },
+  "word_lengths": {
+    "lp": {
+      "bits": 12,
+      "signed": true
+    },
+    "hp": {
+      "bits": 13,
+      "signed": true
+    },
+    "der": {
+      "bits": 15,
+      "signed": true
+    },
+    "sq": {
+      "bits": 16,
+      "signed": false
+    },
+    "mwi": {
+      "bits": 21,
+      "signed": false
+    }
+  },
+  "params": {
+    "fs": 200,
+    "adc_bits": 11,
+    "adc_zero": 1024,
+    "arith": "int",
+    "lp_shift": 5,
+    "hp_len": 32,
+    "hp_shift": 5,
+    "der_shift": 0,
+    "sq_shift": 6,
+    "sq_round": true,
+    "sq_bits": 16,
+    "mwi_len": 30,
+    "r_delay": 21,
+    "pk_timeout": 40,
+    "blank": 128,
+    "learn": 256,
+    "refractory": 40,
+    "twave_win": 72,
+    "rr_init": 200,
+    "rr_mode": "ema",
+    "age_bits": 11,
+    "k_pk": 3,
+    "spk_clip_shifts": [
+      0,
+      2
+    ],
+    "k_sb": 2,
+    "k_thr": 2,
+    "rr_missed_shifts": [
+      0,
+      1,
+      3,
+      5
+    ],
+    "spk_init_shifts": [
+      2,
+      4
+    ],
+    "npk_init_shift": 1
+  },
+  "streams": [
+    {
+      "name": "r100_20s",
+      "samples": 4200,
+      "peaks": 46,
+      "beats": 23
+    },
+    {
+      "name": "r210_30s",
+      "samples": 6200,
+      "peaks": 101,
+      "beats": 43
+    },
+    {
+      "name": "stress",
+      "samples": 8200,
+      "peaks": 98,
+      "beats": 47
+    }
+  ]
+}

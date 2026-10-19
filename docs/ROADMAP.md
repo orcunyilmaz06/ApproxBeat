@@ -11,7 +11,9 @@ Shuttle dates were checked against <https://tinytapeout.com/runs> on 2026-10-19.
     a first word-length / accuracy grid (`results/int_study.md`).
   - Robust searchback (D14), done. It was chosen on DS1 and confirmed on the held-out DS2,
     and record 228 is no longer a tipping point (`results/searchback_study.md`).
-  - Still open in week 2: the golden-vector format for cocotb and the WSL2 toolchain.
+  - Golden vectors, done: the format and RTL contract (`docs/golden_vectors.md`), the full
+    set and the committed smoke set.
+  - Still open in week 2: the WSL2 toolchain (git, Python 3, cocotb, Icarus Verilog).
 
 ## Shuttles
 

@@ -22,7 +22,7 @@ function test_register_level_equivalence(tc)
 % A register-level datapath (recursive filters, registers of the analytic widths,
 % two's-complement wrap-around) gives exactly the vectorised integer filter chain.
 p = ab_params(); p.arith = 'int';
-adu = stress_signal(20000);
+adu = ab_synthetic('stress', 20000);
 s = ab_pt_filters(adu, p);
 r = stream_filters(adu, p);
 for f = {'lp', 'hp', 'der', 'sq', 'mwi'}
@@ -82,16 +82,6 @@ end
 
 function v = wrap(v, bits)
 v = mod(v + 2^(bits - 1), 2^bits) - 2^(bits - 1);
-end
-
-function adu = stress_signal(n)
-% ECG-like pulses, baseline wander, noise and a few full-scale bursts.
-rs = RandStream('mt19937ar', 'Seed', 5);
-t = (0:n-1)' / 200;
-v = 1024 + 300 * sin(2 * pi * 0.3 * t) + 8 * randn(rs, n, 1);
-v = v + 600 * exp(-0.5 * ((mod(t, 0.8) - 0.4) / 0.012).^2);
-v(5001:5400) = 2047 * (mod(0:399, 12) < 6);
-adu = min(max(round(v), 0), 2047);
 end
 
 function [adu, tq] = synthetic_ecg(p)

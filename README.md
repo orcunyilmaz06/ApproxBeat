@@ -18,7 +18,8 @@ Tapeout chip.
 | Bit-accurate integer model | done; same Se / +P as the float model, 1,403 flip-flops; results below |
 | Robust searchback (record 228 tipping point) | done; chosen on DS1, confirmed on held-out DS2 |
 | Golden vectors for the RTL: format, full set, committed smoke set | done ([docs/golden_vectors.md](docs/golden_vectors.md)) |
-| RTL (Verilog) and cocotb regression | next |
+| RTL filter chain (Verilog) with cocotb regression | done; bit-exact on all 48 records, 17,342,976 samples ([results/rtl_filters.md](results/rtl_filters.md)) |
+| RTL decision logic | next |
 | LibreLane: IHP SG13G2 / GF180 | planned |
 | Tiny Tapeout | target TTGF26c, closes 2026-12-07 |
 
@@ -120,6 +121,8 @@ matlab/
            ab_pt_float / ab_pt_int, ab_int_widths (word lengths), ab_state_inventory
   eval/    beat matching, scoring (ab_run_eval), studies, golden vectors, plots
   tests/   unit tests, run by ab_test
+rtl/       Verilog: ab_filters.v (filter chain)
+tb/filters/  cocotb testbench: ab_filters.v bit-exact against the golden vectors
 tb/vectors/  golden-vector smoke set for the RTL testbench (committed)
 tb/toolcheck/  end-to-end self-test of cocotb + Icarus
 scripts/   get_mitdb.ps1 (download, SHA-256 check), setup_wsl.sh, wsl_make.ps1

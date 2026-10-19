@@ -15,8 +15,9 @@ Shuttle dates were checked against <https://tinytapeout.com/runs> on 2026-10-19.
     set and the committed smoke set.
   - WSL2 toolchain, done: Ubuntu 24.04, Icarus Verilog 12, cocotb 2.1, with an
     end-to-end self-test (`scripts/setup_wsl.sh`, `scripts/wsl_make.ps1`).
-- **Week 3, next.** The RTL filter chain, checked bit-exact against the smoke vectors,
-  then against all 48 records.
+- **Week 3, started early (2026-10-19).** The RTL filter chain (`rtl/ab_filters.v`) is
+  bit-exact on all 48 records (`results/rtl_filters.md`). Next: the decision logic in RTL,
+  then Yosys synthesis for real flip-flop and cell counts.
 
 ## Shuttles
 

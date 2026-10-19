@@ -15,7 +15,7 @@ keep every claim checkable.
 |---|---|---|---|
 | Float model | `matlab/model/ab_pt_float.m` | MIT-BIH reference annotations | Se, +P per `docs/eval_protocol.md` |
 | Integer model | `matlab/model/ab_pt_int.m` | float model | accuracy delta measured and reported (`results/int_study.md`) |
-| RTL | `rtl/` (planned) | integer-model golden vectors (`docs/golden_vectors.md`) | bit-exact at every stage, all 48 records |
+| RTL | `rtl/ab_filters.v` (filter chain); decision logic planned | integer-model golden vectors (`docs/golden_vectors.md`) | bit-exact at every stage, all 48 records (`results/rtl_filters.md`) |
 | GDS | `flow/` (planned) | RTL, gate-level simulation | DRC/LVS clean, timing met |
 
 A stage counts as correct only after its check against the stage before it passes.
@@ -66,6 +66,9 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
 - README figures: `matlab -batch "cd('matlab'); ab_setup; ab_make_figures"`
 - Run a cocotb testbench in WSL from Windows (extra arguments go to make):
   `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\wsl_make.ps1 tb\toolcheck`
+- RTL filter chain against the golden vectors. `scripts\wsl_make.ps1 tb\filters` runs the
+  smoke set (~2 s, run it after every RTL change). Adding `AB_FULL=1` covers all 48
+  records (~25 min, writes `results/rtl_filters.md`); `AB_RECORDS=100,228` gives a subset.
 - Rebuild the WSL venv and self-test:
   `wsl -d Ubuntu-24.04 --cd <repo> -- bash scripts/setup_wsl.sh`. Commands with nested
   quotes get mangled between PowerShell and WSL, so put them in a script file.

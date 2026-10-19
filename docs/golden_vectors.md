@@ -58,6 +58,18 @@ see `manifest.json`.
 | `n`, `age` | sample at which the peak was confirmed and classified, and its age then |
 | `spk`, `npk`, `thr1` | levels after the classification |
 
+## Filter chain: `rtl/ab_filters.v`
+
+The first RTL block. Its ports are `clk`, `rst_n`, `in_valid`, `in_adu[10:0]`, plus the
+registered stage outputs `lp`, `hp`, `sq` and `mwi` of the last sample. It takes one
+sample per `in_valid` and computes every stage in that clock cycle. During the cycle,
+its wires `lp_n`, `hp_n`, `der_n`, `sq_n` and `mwi_n` carry the incoming sample's
+values. `tb/filters` compares those wires with columns 1-5 of `samples` on every sample:
+
+    scripts\wsl_make.ps1 tb\filters             smoke set, ~2 s
+    scripts\wsl_make.ps1 tb\filters AB_FULL=1   also all 48 records, ~25 min;
+                                                writes results/rtl_filters.md
+
 ## What the RTL must reproduce
 
 The core takes one sample per `in_valid` strobe and may spend a fixed number of clock

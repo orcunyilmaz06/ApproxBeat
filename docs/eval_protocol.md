@@ -24,3 +24,8 @@ Changing the protocol requires an entry in `decisions.md`.
    They are reported for all 48 records and for the 44 non-paced records (102, 104, 107
    and 217 are paced).
 7. **One parameter set.** `ab_params` applies to every record. Nothing is tuned per record.
+8. **Comparing variants** (float against integer, or approximate designs). Report the gross
+   statistics of both and list every record whose FN or FP changed. Record 228 sits at a
+   tipping point of the searchback (D12), so a swing there alone is not evidence of an
+   arithmetic effect. Input dither of +/-1 LSB moves the gross DER by about 0.003 pp
+   (`results/int_study.md`, section 3); smaller differences are noise.

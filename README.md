@@ -15,7 +15,8 @@ Tapeout chip.
 |---|---|
 | Data pipeline: WFDB readers, 200 Hz / 11-bit ADC model | done; verified against the WFDB checksums of all 48 records |
 | Float reference model: streaming Pan-Tompkins | done; results below |
-| Bit-accurate integer model | next (week 2) |
+| Bit-accurate integer model | done; within 0.01 pp of the float model, 1,403 flip-flops; results below |
+| Robust searchback (record 228 tipping point) | next |
 | RTL (Verilog) and cocotb regression | planned |
 | LibreLane: IHP SG13G2 / GF180 | planned |
 | Tiny Tapeout | target TTGF26c, closes 2026-12-07 |
@@ -41,6 +42,35 @@ outside the refractory period, and get counted as beats (second figure).
 
 ![Record 108: P waves 200 ms before the QRS cross THR1 and become false positives](results/figures/r108_pwave_false_positives.png)
 
+## Integer model
+
+`ab_pt_int` is the bit-accurate golden model for the RTL. It runs the same state machine
+as the float model, with every shift an arithmetic shift right, so the two can differ only
+by rounding. Source: [results/int_study.md](results/int_study.md).
+
+| Model | Se (%) | +P (%) | DER (%) | Flip-flops |
+|---|---:|---:|---:|---:|
+| float (`ab_pt_float`) | 99.63 | 99.80 | 0.564 | |
+| integer (`ab_pt_int`) | 99.62 | 99.80 | 0.572 | 1,403 |
+
+What it took to get there, and what it showed:
+
+- **Round late, and round to nearest.** Pan & Tompkins' integer code truncates the
+  derivative before squaring. That costs 0.12 pp of DER, because the small derivatives of
+  low-amplitude beats lose most of their precision. Squaring first and rounding the shift
+  to nearest closes the gap.
+- **Storage dominates, not the multiplier.** The four delay lines hold 75 % of the
+  flip-flops ([results/state_inventory.md](results/state_inventory.md)). The squared
+  derivative needs 22 bits in the worst case but only 16 bits on MIT-BIH.
+- **A first trade-off, with a surprise.** Saturating the squared derivative below its
+  data maximum *improves* accuracy slightly while saving up to 18 % of the flip-flops:
+  10 bits instead of 16 give 1,157 flip-flops and DER 0.550 %. The likely reason is that
+  clipping stops large PVCs from inflating the adaptive threshold. This was found on the
+  test records themselves, so it still needs a held-out check (D13).
+- **A tipping point.** Record 228 (bigeminy) flips between 20 and 222 missed beats under
+  tiny systematic changes, while input noise does not move it. Approximate-arithmetic
+  results have to be read with that in mind until the searchback is made robust (D12).
+
 ## Quick start
 
 You need base MATLAB (no toolboxes) and, for the download script, Windows PowerShell
@@ -54,7 +84,8 @@ matlab -batch "cd('matlab'); ab_setup; ab_run_eval"
 
 The first command downloads ~98 MB from PhysioNet and checks it. The second runs the unit
 tests, and the third scores all 48 records and writes `results/float_baseline.{csv,md}`.
-To see what the detector does, run this inside MATLAB:
+`ab_int_study` (about 10 minutes) regenerates every integer-model result. To see what the
+detector does, run this inside MATLAB:
 
 ```
 cd matlab; ab_setup
@@ -74,8 +105,9 @@ was made.
 ```
 matlab/
   io/      WFDB header, signal and annotation readers, resampler, record loader
-  model/   ab_params (every constant), ab_pt_filters, ab_pt_decide, ab_pt_float
-  eval/    beat matching, scoring (ab_run_eval), plots (ab_plot_detection)
+  model/   ab_params (every constant), ab_pt_filters, ab_pt_decide, ab_pt_detect,
+           ab_pt_float / ab_pt_int, ab_int_widths (word lengths), ab_state_inventory
+  eval/    beat matching, scoring (ab_run_eval), integer study, range study, plots
   tests/   unit tests, run by ab_test
 scripts/   get_mitdb.ps1: download and SHA-256 check
 docs/      algorithm spec, evaluation protocol, decision log, roadmap

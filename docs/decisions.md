@@ -57,3 +57,72 @@ N ms wins" rule would fix this record, but N would have to sit between the PR in
 here and the RR interval of ventricular tachycardia elsewhere in the database. That is
 tuning on the test set, so the rule is not added. Any later fix must improve the gross
 statistics without per-record parameters.
+
+## 2026-10-19: D8. One decision engine for float and integer arithmetic
+
+The decision logic is written register by register: event positions are saturating
+11-bit age counters, and every gain is a list of shifts. `p.arith` chooses whether a shift
+divides exactly (`'float'`) or rounds down (`'int'`). Rewriting the float model into this
+form left TP, FN and FP unchanged on all 48 records, as checked against the committed
+baseline. Any float/integer difference therefore comes from rounding.
+
+## 2026-10-19: D9. The derivative's 1/8 moves behind the squarer
+
+Tompkins' C code shifts the derivative right by 3 and then squares it. In integer
+arithmetic that truncates the small derivatives of low-amplitude beats. Here the squarer
+sees the full derivative and the combined scaling is one `>> 6` after it. In
+`results/int_study.md` section 2, DER drops from 0.693 % (configuration A) to 0.572 % (B,
+rounded). Cost: the squarer grows from 12 x 12 to 15 x 15 bits. No delay line grows,
+because the derivative is not stored.
+
+## 2026-10-19: D10. Round to nearest at the squarer shift
+
+Truncation lowers every `sq` by half an LSB on average, and the MWI sums 30 of them, a
+-15 LSB bias that hurts small beats the most. Adding half an LSB before the shift costs
+one constant adder. Truncated, configuration B gives DER 0.593 % and 48 FN in record 228;
+rounded, it gives 0.572 % and 20 FN, the same as the float model (`int_study.md`,
+sections 2 and 4a). With rounding, the decision logic's own rounding no longer changes
+record 228 (last column of section 2).
+
+## 2026-10-19: D11. Saturate the squared derivative at 16 bits
+
+The analytic worst case of `sq` is 22 bits, but the widest value on MIT-BIH needs 16
+(`results/range_study.md`). Saturating at 16 bits clips nothing on MIT-BIH. It shrinks
+the MWI line from 660 to 480 flip-flops and the MWI and decision registers from 27 to
+21 bits. The integer baseline has 1,403 flip-flops, 75 % of them in the four delay lines
+(`results/state_inventory.md`).
+
+## 2026-10-19: D12. Record 228 sits at a tipping point
+
+Record 228 has long runs of bigeminy, where large PVCs alternate with small normal beats.
+The PVCs dominate SPKI, so the normal beats are found only by searchback. Once a few are
+missed, the RR average locks onto the PVC-to-PVC interval, the searchback fires too late,
+and THR2 rises above the normal beats. That state absorbs: the detector stays in it.
+
+Evidence (`results/int_study.md`):
+- Across the rounding variants of section 2, the record's FN count ranges from 20 to 222.
+- Configurations C and D-rounded keep more bits than the baseline yet give 55. Closer
+  arithmetic does not predict the outcome.
+- Zero-mean input dither of +/-1 LSB moves no record by more than 5 (section 3). The
+  record is pushed over by systematic bias, not by noise.
+
+Consequences:
+- Protocol item 8 (`eval_protocol.md`).
+- The searchback needs a robustness fix before the approximate-arithmetic study, or the
+  study will mostly measure which side of this tipping point each variant lands on.
+
+## 2026-10-19: D13. Clipping MSBs of the squared derivative helps (finding, not adopted)
+
+In the word-length grid (`results/int_study.md`, section 4b), saturating `sq` 4 bits below
+its MIT-BIH maximum (12 bits) lowers DER from 0.572 % to 0.553 % and FN in 228 from 20 to
+10. Combined with dropping 1-2 LSBs, DER stays at 0.548-0.550 % with 1,198-1,157
+flip-flops, 15-18 % fewer than the baseline. Clipping 6 MSBs goes too far: noise peaks
+become as large as QRS complexes, and +P falls to about 98 %.
+
+The likely mechanism: saturation compresses the MWI's dynamic range, so large PVCs no
+longer dominate SPKI. That is the failure behind D12.
+
+The finding is not adopted as the baseline, because the grid was evaluated on the same
+records it would be judged on. It is the leading candidate for the v1 tape-out if area is
+tight. Confirm it on a held-out split first, such as the AAMI DS1/DS2 record split: choose
+on DS1, report on DS2.

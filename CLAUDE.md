@@ -14,11 +14,17 @@ keep every claim checkable.
 | Stage | Lives in | Checked against | Pass criterion |
 |---|---|---|---|
 | Float model | `matlab/model/ab_pt_float.m` | MIT-BIH reference annotations | Se, +P per `docs/eval_protocol.md` |
-| Integer model | `matlab/model/` (planned) | float model | accuracy delta measured and reported |
+| Integer model | `matlab/model/ab_pt_int.m` | float model | accuracy delta measured and reported (`results/int_study.md`) |
 | RTL | `rtl/` (planned) | integer-model golden vectors | bit-exact at every stage, all 48 records |
 | GDS | `flow/` (planned) | RTL, gate-level simulation | DRC/LVS clean, timing met |
 
 A stage counts as correct only after its check against the stage before it passes.
+Float and integer models share one code path (`ab_pt_detect`, `p.arith`). Keep it that way,
+so that a float/int difference can only come from rounding.
+
+Record 228 sits at a tipping point of the searchback logic: tiny systematic changes move
+its FN count by up to ~200 (D12). When comparing variants, look at the per-record changes
+and do not read a 228 swing as an arithmetic effect.
 
 ## Rules
 
@@ -32,7 +38,8 @@ A stage counts as correct only after its check against the stage before it passe
 4. **The model is a hardware specification.** Keep it causal and sample-by-sample, with
    fixed-size state, constant gains written as shifts or short shift-add sums, no
    data-dependent division, and no lookahead beyond explicit delay lines. Add any new
-   state to the state inventory in `docs/algorithm.md`.
+   register to `ab_state_inventory`; accumulators keep their analytic widths
+   (`ab_int_widths`), and approximations go only at memoryless points.
 5. **The evaluation protocol (`docs/eval_protocol.md`) is frozen.** Never tune parameters
    on individual records, and never change the protocol to improve a number. Each
    algorithm or protocol change gets an entry in `docs/decisions.md` with its reason and
@@ -43,19 +50,24 @@ A stage counts as correct only after its check against the stage before it passe
 
 ## Commands (from the repo root)
 
-- Unit tests: `matlab -batch "cd('matlab'); ab_test"`
-- Full evaluation (48 records, ~10 s plus MATLAB startup; writes `results/float_baseline.{csv,md}`):
+- Unit tests: `matlab -batch "cd('matlab'); ab_test"`. `test_regression` fails when
+  `results/*_baseline.csv` no longer match the code, which means the results need regenerating.
+- Float evaluation (48 records, ~12 s plus MATLAB startup; writes `results/float_baseline.{csv,md}`):
   `matlab -batch "cd('matlab'); ab_setup; ab_run_eval"`
+- Integer model study (~10 min; regenerates both baselines, `range_study`, `state_inventory`,
+  `wordlength_grid` and `int_study`): `matlab -batch "cd('matlab'); ab_setup; ab_int_study"`
 - README figures: `matlab -batch "cd('matlab'); ab_setup; ab_make_figures"`
 - Download data (~98 MB; PhysioNet is slow, ~20-40 min):
   `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\get_mitdb.ps1`
 
 ## Environment
 
-- Windows 11 with MATLAB R2026b (no Signal Processing Toolbox installed, and none needed).
-- Planned for the RTL stages: WSL2 (Ubuntu) with git, Python 3, cocotb and Icarus Verilog
-  or Verilator, plus LibreLane via Nix. None of these are installed yet. See
-  `docs/ROADMAP.md`, week 2.
+- Windows 11 with MATLAB R2026b (no Signal Processing Toolbox installed, and none needed)
+  and Git for Windows. The repo lives in a OneDrive-synced Desktop folder. Work on
+  `feat/...` branches and merge into `main`.
+- Planned for the RTL stages: WSL2 (Ubuntu) with Python 3, cocotb and Icarus Verilog or
+  Verilator, plus LibreLane via Nix. None of these are installed yet. Clone the repo inside
+  the WSL file system rather than working on `/mnt/c` (much faster). See `docs/ROADMAP.md`.
 
 ## Conventions
 

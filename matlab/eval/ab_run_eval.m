@@ -10,17 +10,21 @@ function S = ab_run_eval(varargin)
 %     'tag'      results file stem                  (default 'float_baseline')
 %     'records'  cell array of record names         (default ab_records())
 %     'save'     write the results files            (default true)
+%     'verbose'  print the per-record table         (default true)
 %
 %   S.table - one row per record;  S.gross - gross statistics (all / non-paced)
 %   S.missed{k}, S.false{k} - times (s) of the false negatives / false positives
+%   S.detections{k} - every detection of record k (0-based samples at p.fs)
 ip = inputParser;
 ip.addParameter('model', @ab_pt_float, @(f) isa(f, 'function_handle'));
 ip.addParameter('params', ab_params(), @isstruct);
 ip.addParameter('tag', 'float_baseline', @(s) ischar(s) || isstring(s));
 ip.addParameter('records', ab_records(), @iscellstr);
 ip.addParameter('save', true, @islogical);
+ip.addParameter('verbose', true, @islogical);
 ip.parse(varargin{:});
 o = ip.Results;
+if o.verbose, say = @fprintf; else, say = @(varargin) []; end
 o.tag = char(o.tag);
 p = o.params;
 tol = 0.150;                                     % EC57 match window (s)
@@ -28,12 +32,12 @@ tol = 0.150;                                     % EC57 match window (s)
 
 rec = o.records(:);
 nr = numel(rec);
-[lead, missed, false_det] = deal(cell(nr, 1));
+[lead, missed, false_det, detections] = deal(cell(nr, 1));
 [beats, tp, fn, fp, fn_learn, sb, vf_excluded, err_ms, err_sd_ms] = deal(zeros(nr, 1));
 t_learn = (p.blank + p.learn) / p.fs;             % detector is still learning before this
 
-fprintf('%-5s %-5s %6s %6s %5s %5s %7s %7s %13s %4s\n', ...
-        'rec', 'lead', 'beats', 'TP', 'FN', 'FP', 'Se%', '+P%', 'err ms', 'SB');
+say('%-5s %-5s %6s %6s %5s %5s %7s %7s %13s %4s\n', ...
+    'rec', 'lead', 'beats', 'TP', 'FN', 'FP', 'Se%', '+P%', 'err ms', 'SB');
 t0 = tic;
 for k = 1:nr
     r = ab_load_record(rec{k}, p.fs);
@@ -46,6 +50,7 @@ for k = 1:nr
     t_det_s = t_det(~in_det);
     m = ab_match_beats(t_ref_s, t_det_s, tol);
 
+    detections{k} = det.sample;
     missed{k} = t_ref_s(~m.ref_hit);
     false_det{k} = t_det_s(~m.det_hit);
     lead{k}  = r.lead;
@@ -56,9 +61,9 @@ for k = 1:nr
     err_sd_ms(k) = 1000 * std(m.err);
     sb(k) = nnz(det.kind(~in_det) == 2);
     vf_excluded(k) = nnz(in_ref);
-    fprintf('%-5s %-5s %6d %6d %5d %5d %7.2f %7.2f %6.1f +-%5.1f %4d\n', rec{k}, lead{k}, ...
-            beats(k), tp(k), fn(k), fp(k), 100 * tp(k) / (tp(k) + fn(k)), ...
-            100 * tp(k) / (tp(k) + fp(k)), err_ms(k), err_sd_ms(k), sb(k));
+    say('%-5s %-5s %6d %6d %5d %5d %7.2f %7.2f %6.1f +-%5.1f %4d\n', rec{k}, lead{k}, ...
+        beats(k), tp(k), fn(k), fp(k), 100 * tp(k) / (tp(k) + fn(k)), ...
+        100 * tp(k) / (tp(k) + fp(k)), err_ms(k), err_sd_ms(k), sb(k));
 end
 secs = toc(t0);
 
@@ -71,29 +76,30 @@ not_paced = ~ismember(rec, paced);
 G = [gross_row(sprintf('all %d records', nr), T, true(nr, 1));
      gross_row(sprintf('%d non-paced records', nnz(not_paced)), T, not_paced)];
 
-fprintf('\n%-22s %7s %6s %5s %5s %7s %7s %7s %7s\n', 'set', 'beats', 'TP', 'FN', 'FP', ...
-        'Se%', '+P%', 'F1%', 'DER%');
+say('\n%-22s %7s %6s %5s %5s %7s %7s %7s %7s\n', 'set', 'beats', 'TP', 'FN', 'FP', ...
+    'Se%', '+P%', 'F1%', 'DER%');
 for k = 1:height(G)
-    fprintf('%-22s %7d %6d %5d %5d %7.2f %7.2f %7.2f %7.2f\n', G.set(k), G.beats(k), ...
-            G.tp(k), G.fn(k), G.fp(k), G.se_pct(k), G.ppv_pct(k), G.f1_pct(k), G.der_pct(k));
+    say('%-22s %7d %6d %5d %5d %7.2f %7.2f %7.2f %7.2f\n', G.set(k), G.beats(k), ...
+        G.tp(k), G.fn(k), G.fp(k), G.se_pct(k), G.ppv_pct(k), G.f1_pct(k), G.der_pct(k));
 end
 [~, worst] = sort((T.fn + T.fp) ./ T.beats, 'descend');
-fprintf('worst records (FN+FP): %s\n', strjoin(compose('%s (%d+%d)', ...
-        string(T.record(worst(1:min(6, nr)))), T.fn(worst(1:min(6, nr))), T.fp(worst(1:min(6, nr)))), ', '));
-fprintf('%d records in %.1f s\n', nr, secs);
+say('worst records (FN+FP): %s\n', strjoin(compose('%s (%d+%d)', ...
+    string(T.record(worst(1:min(6, nr)))), T.fn(worst(1:min(6, nr))), T.fp(worst(1:min(6, nr)))), ', '));
+say('%d records in %.1f s\n', nr, secs);
 
 if o.save
     P = ab_paths();
     if ~isfolder(P.results), mkdir(P.results); end
     writetable(T, fullfile(P.results, [o.tag '.csv']));
     write_markdown(fullfile(P.results, [o.tag '.md']), o, p, T, G, secs);
-    fprintf('wrote results/%s.csv and results/%s.md\n', o.tag, o.tag);
+    say('wrote results/%s.csv and results/%s.md\n', o.tag, o.tag);
 end
 S.table = T;
 S.gross = G;
 S.params = p;
 S.missed = missed;
 S.false = false_det;
+S.detections = detections;
 end
 
 function in = in_intervals(t, iv)

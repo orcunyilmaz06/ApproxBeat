@@ -2,6 +2,16 @@
 
 Shuttle dates were checked against <https://tinytapeout.com/runs> on 2026-10-19.
 
+## Progress
+
+- **Week 1, done (2026-10-19).** Data pipeline, float model and scoring are in place
+  (`results/float_baseline.md`).
+- **Week 2, ahead of schedule (2026-10-19).**
+  - Done: the bit-accurate integer model, the dynamic-range study, the register inventory and
+    a first word-length / accuracy grid (`results/int_study.md`).
+  - Still open in week 2: a robust searchback, because record 228 sits at a tipping point
+    (D12). Also the golden-vector format for cocotb and the WSL2 toolchain.
+
 ## Shuttles
 
 | Run | Process | Closes | Chips expected | Est. shipping | Role |

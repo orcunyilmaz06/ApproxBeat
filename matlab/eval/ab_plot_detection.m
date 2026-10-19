@@ -5,8 +5,10 @@ function fig = ab_plot_detection(rec, t_span, varargin)
 %       and false detections (red o),
 %   (2) the band-pass output,
 %   (3) the MWI with every classified peak and the threshold THR1 it met.
-%   Options: 'params' (default ab_params()), 'file' (save as an image, figure hidden).
+%   Options: 'model' (default @ab_pt_float), 'params' (default ab_params()),
+%   'file' (save as an image, figure hidden).
 ip = inputParser;
+ip.addParameter('model', @ab_pt_float, @(f) isa(f, 'function_handle'));
 ip.addParameter('params', ab_params(), @isstruct);
 ip.addParameter('file', '', @(s) ischar(s) || isstring(s));
 ip.parse(varargin{:});
@@ -14,7 +16,7 @@ p = ip.Results.params;
 file = char(ip.Results.file);
 
 r = ab_load_record(rec, p.fs);
-[det, s] = ab_pt_float(r.adu, p);
+[det, s] = ip.Results.model(r.adu, p);
 [t_ref, sym] = ab_reference_beats(r.ann, r.fs_orig);
 t_det = det.sample / p.fs;
 m = ab_match_beats(t_ref, t_det, 0.150);          % inputs are already time-sorted
@@ -26,7 +28,8 @@ vis = 'on';
 if ~isempty(file), vis = 'off'; end
 fig = figure('Color', 'w', 'Position', [80 80 1200 760], 'Visible', vis);
 tl = tiledlayout(fig, 3, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
-title(tl, sprintf('Record %s (%s), %g-%g s', rec, r.lead, t_span(1), t_span(2)));
+title(tl, sprintf('Record %s (%s), %g-%g s, %s', rec, r.lead, t_span(1), t_span(2), ...
+                  func2str(ip.Results.model)), 'Interpreter', 'none');
 
 ax1 = nexttile(tl);
 ecg = (r.adu - r.adczero) / r.gain;

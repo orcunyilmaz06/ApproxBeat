@@ -18,8 +18,14 @@ Shuttle dates were checked against <https://tinytapeout.com/runs> on 2026-10-19.
 - **Weeks 3-4, done early (2026-10-20).** The complete RTL detector is bit-exact on all 48
   records, end to end from the ADC codes. That covers the filter chain (`rtl/ab_filters.v`)
   and the decision logic (`rtl/ab_decide.v`), joined in `rtl/ab_core.v`, with results in
-  `results/rtl_filters.md` and `results/rtl_core.md`. Next: Yosys synthesis for real
-  flip-flop and cell counts, area closure (D15), and the Tiny Tapeout wrapper.
+  `results/rtl_filters.md` and `results/rtl_core.md`.
+- **Generic synthesis, done (2026-10-20).** 1,516 flip-flops and 7,057 logic cells; the
+  flip-flops reconcile with the inventory to within 1.7 % (`results/synth_core.md`, D16).
+  Next:
+  - Area closure: share the adders of the decision logic (D15, D16).
+  - The Tiny Tapeout wrapper and its I/O protocol.
+  - A GitHub repository for the TT GitHub Action.
+  - LibreLane for real area.
 
 ## Shuttles
 

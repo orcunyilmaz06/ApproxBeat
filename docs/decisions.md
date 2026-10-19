@@ -211,3 +211,29 @@ phase and flags, and the event outputs. Together they come to 127 flip-flops, an
 
 **Verification.** Smoke vectors on every change, and all 48 records end to end
 (`results/rtl_filters.md`, `results/rtl_core.md`).
+
+## 2026-10-20: D16. Generic synthesis: the flip-flops reconcile, and logic is the other half
+
+Yosys 0.33 on generic gates (`flow/synth`, `results/synth_core.md`) gives `ab_core` 1,516
+flip-flops and 7,057 logic cells. The flip-flops reconcile with the 1,542 declared
+register bits, which are what `ab_state_inventory` counts:
+
+- **-24.** `y1` and `y2` of the low-pass are `lp` shifted left by 5 plus 5 LSBs, so their
+  upper 12 bits equal the first two slots of `lp_line`. Yosys merges them. An RTL that
+  keeps only the 5 LSBs of `y1` and `y2` would make this explicit.
+- **-4.** `last_slope` and `sb_slope` are only ever read shifted right by 2, so their two
+  LSBs go.
+- **+2.** The FSM pass re-encodes the decision phases one-hot, with 5 flip-flops instead
+  of 3.
+
+The inventory is therefore accurate to 1.7 %.
+
+The logic is not small. 4,434 of the 7,057 cells are in the decision logic, where every
+phase has its own adders and comparators, and the level update alone exists six times.
+The filter chain, squarer included, has 2,622.
+
+Area plan, with D15:
+- Share one level-update unit across the phases.
+- Drop the input latch.
+- Merge PEAK into CLASS.
+- Then measure on a real PDK with LibreLane.

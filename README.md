@@ -20,7 +20,8 @@ Tapeout chip.
 | Golden vectors for the RTL: format, full set, committed smoke set | done ([docs/golden_vectors.md](docs/golden_vectors.md)) |
 | RTL filter chain (Verilog) with cocotb regression | done; bit-exact on all 48 records, 17,342,976 samples ([results/rtl_filters.md](results/rtl_filters.md)) |
 | RTL decision logic and core (`rtl/ab_core.v`) | done; end to end from ADC codes, all 48 records: 276,457 peak and 109,794 beat events bit-exact ([results/rtl_core.md](results/rtl_core.md)) |
-| Yosys synthesis, area closure, Tiny Tapeout wrapper | next |
+| Generic Yosys synthesis | done; 1,516 flip-flops and 7,057 logic cells, reconciled with the register inventory ([results/synth_core.md](results/synth_core.md)) |
+| Area closure, Tiny Tapeout wrapper, LibreLane | next |
 | LibreLane: IHP SG13G2 / GF180 | planned |
 | Tiny Tapeout | target TTGF26c, closes 2026-12-07 |
 
@@ -61,9 +62,12 @@ by rounding. Source: [results/int_study.md](results/int_study.md).
 
 What it took to get there, and what it showed:
 
-- **Storage dominates, not the multiplier.** The four delay lines hold 68 % of the 1,542
-  flip-flops ([results/state_inventory.md](results/state_inventory.md)). The squared
-  derivative needs 22 bits in the worst case but only 16 bits on MIT-BIH.
+- **Storage dominates the flip-flops, not the multiplier.** The four delay lines hold
+  68 % of the 1,542 flip-flops ([results/state_inventory.md](results/state_inventory.md)).
+  The squared derivative needs 22 bits in the worst case but only 16 bits on MIT-BIH.
+  Generic synthesis adds 7,057 logic cells, 4,434 of them in the decision logic, where
+  each phase still has its own adders. Those adders are the first target of the area
+  phase ([results/synth_core.md](results/synth_core.md), D16).
 - **A tipping point, found and removed.** At first, the integer model's accuracy depended
   on rounding details. Across six rounding variants the gross DER ranged from 0.572 % to
   0.747 %, and almost all of that came from one record. In 228 (bigeminy), large PVCs
@@ -125,6 +129,7 @@ matlab/
 rtl/       Verilog: ab_filters.v (filter chain), ab_decide.v (decision logic), ab_core.v
 tb/filters/, tb/decide/, tb/core/  cocotb testbenches, bit-exact against the golden vectors
 tb/common/   event checker shared by the testbenches
+flow/synth/  generic Yosys synthesis; report.py reconciles flip-flops with the inventory
 tb/vectors/  golden-vector smoke set for the RTL testbench (committed)
 tb/toolcheck/  end-to-end self-test of cocotb + Icarus
 scripts/   get_mitdb.ps1 (download, SHA-256 check), setup_wsl.sh, wsl_make.ps1

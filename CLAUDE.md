@@ -71,6 +71,8 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
   Adding `AB_FULL=1` covers all 48 records: filters ~25 min and core ~55 min, writing
   `results/rtl_filters.md` and `results/rtl_core.md`. `AB_RECORDS=203,228` gives a subset.
   The event checker the testbenches share is in `tb/common/ab_tb.py`.
+- Generic synthesis (Yosys in WSL, ~10 s, writes `results/synth_core.md`, which reconciles
+  the flip-flops with the declared registers): `scripts\wsl_make.ps1 flow\synth`.
 - Rebuild the WSL venv and self-test:
   `wsl -d Ubuntu-24.04 --cd <repo> -- bash scripts/setup_wsl.sh`. Commands with nested
   quotes get mangled between PowerShell and WSL, so put them in a script file.
@@ -83,7 +85,7 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
   and Git for Windows. The repo lives in a OneDrive-synced Desktop folder. Work on
   `feat/...` branches and merge into `main`.
 - RTL toolchain in WSL2 (WSL 3.0.3), distribution `Ubuntu-24.04`: Icarus Verilog 12.0,
-  make and git from apt. A Python 3.12 venv at `/opt/approxbeat/venv` holds the versions
+  Yosys 0.33, make and git from apt. A Python 3.12 venv at `/opt/approxbeat/venv` holds the versions
   pinned in `tb/requirements.txt` (cocotb 2.1.0, numpy). `scripts/setup_wsl.sh` rebuilds
   it and ends with an end-to-end self-test (`tb/toolcheck`).
 - One repo, on Windows. WSL reads the sources through `/mnt/c`, and git runs only on the

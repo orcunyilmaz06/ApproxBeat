@@ -108,6 +108,10 @@ the MWI line from 660 to 480 flip-flops and the MWI and decision registers from 
 21 bits. The integer baseline has 1,403 flip-flops, 75 % of them in the four delay lines
 (`results/state_inventory.md`).
 
+*Update (D15).* The inventory now also counts the RR missed limit, which the model stores
+too, and the RTL's sequencing registers: 1,542 flip-flops in all, 68 % of them in the delay
+lines.
+
 ## 2026-10-19: D12. Record 228 sits at a tipping point
 
 Record 228 has long runs of bigeminy, where large PVCs alternate with small normal beats.
@@ -183,3 +187,27 @@ record that begins in such bigeminy gets its SPKI from a PVC in the learning win
 the small beats stay lost (`test_detector`, comment in
 `test_bigeminy_with_small_normal_beats`). A fix would need a way to lower SPKI without a
 QRS, for example a slow decay. That is left for later.
+
+## 2026-10-20: D15. RTL architecture, first version
+
+**Filter chain** (`rtl/ab_filters.v`). It computes every stage of a sample in the clock
+cycle that brings it. The delay lines are packed shift registers. The design is written
+for correctness first, and area comes later.
+
+**Decision logic** (`rtl/ab_decide.v`). A four-phase state machine runs once per sample:
+PEAK, CLASS, SEARCH, BOOK. This keeps the model's order inside a sample, including
+same-sample effects such as a searchback that fires on a candidate taken one phase
+earlier. A sample takes 6 clock cycles, while the ADC delivers one every 5 ms. The phases
+cost registers that the model does not have: an input latch, the classified peak, the
+phase and flags, and the event outputs. Together they come to 127 flip-flops, and
+`ab_state_inventory` now counts them, giving 1,542 flip-flops in total.
+
+**Area-phase candidates.**
+- Drop the input latch (49 flip-flops), since the filter outputs are already stable until
+  `done`.
+- Merge PEAK into CLASS (54).
+- Share one adder across the phases.
+- Then the word lengths of D13.
+
+**Verification.** Smoke vectors on every change, and all 48 records end to end
+(`results/rtl_filters.md`, `results/rtl_core.md`).

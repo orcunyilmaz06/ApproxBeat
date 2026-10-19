@@ -15,11 +15,12 @@ Tapeout chip.
 |---|---|
 | Data pipeline: WFDB readers, 200 Hz / 11-bit ADC model | done; verified against the WFDB checksums of all 48 records |
 | Float reference model: streaming Pan-Tompkins | done; results below |
-| Bit-accurate integer model | done; same Se / +P as the float model, 1,403 flip-flops; results below |
+| Bit-accurate integer model | done; same Se / +P as the float model; results below |
 | Robust searchback (record 228 tipping point) | done; chosen on DS1, confirmed on held-out DS2 |
 | Golden vectors for the RTL: format, full set, committed smoke set | done ([docs/golden_vectors.md](docs/golden_vectors.md)) |
 | RTL filter chain (Verilog) with cocotb regression | done; bit-exact on all 48 records, 17,342,976 samples ([results/rtl_filters.md](results/rtl_filters.md)) |
-| RTL decision logic | next |
+| RTL decision logic and core (`rtl/ab_core.v`) | done; end to end from ADC codes, all 48 records: 276,457 peak and 109,794 beat events bit-exact ([results/rtl_core.md](results/rtl_core.md)) |
+| Yosys synthesis, area closure, Tiny Tapeout wrapper | next |
 | LibreLane: IHP SG13G2 / GF180 | planned |
 | Tiny Tapeout | target TTGF26c, closes 2026-12-07 |
 
@@ -56,11 +57,11 @@ by rounding. Source: [results/int_study.md](results/int_study.md).
 | Model | Se (%) | +P (%) | DER (%) | Flip-flops |
 |---|---:|---:|---:|---:|
 | float (`ab_pt_float`) | 99.68 | 99.78 | 0.540 | |
-| integer (`ab_pt_int`) | 99.68 | 99.78 | 0.544 | 1,403 |
+| integer (`ab_pt_int`), as built in `rtl/ab_core.v` | 99.68 | 99.78 | 0.544 | 1,542 |
 
 What it took to get there, and what it showed:
 
-- **Storage dominates, not the multiplier.** The four delay lines hold 75 % of the
+- **Storage dominates, not the multiplier.** The four delay lines hold 68 % of the 1,542
   flip-flops ([results/state_inventory.md](results/state_inventory.md)). The squared
   derivative needs 22 bits in the worst case but only 16 bits on MIT-BIH.
 - **A tipping point, found and removed.** At first, the integer model's accuracy depended
@@ -74,7 +75,7 @@ What it took to get there, and what it showed:
   ([results/searchback_study.md](results/searchback_study.md), D14).
 - **A robust detector tolerates short words.** After the fix, the stored squared
   derivative fits in 8 bits instead of 22 (4 LSBs dropped, 4 MSBs clipped). DER is
-  0.542 % against 0.544 %, and the design needs 1,075 flip-flops instead of 1,403
+  0.542 % against 0.544 %, and the design needs 1,182 flip-flops instead of 1,542
   (-23 %). This is exploratory, over all 48 records, and still needs the DS1/DS2 check
   ([results/int_study.md](results/int_study.md) section 4b, D13).
 - **Rounding details stopped mattering.** All six rounding variants now give DER
@@ -121,8 +122,9 @@ matlab/
            ab_pt_float / ab_pt_int, ab_int_widths (word lengths), ab_state_inventory
   eval/    beat matching, scoring (ab_run_eval), studies, golden vectors, plots
   tests/   unit tests, run by ab_test
-rtl/       Verilog: ab_filters.v (filter chain)
-tb/filters/  cocotb testbench: ab_filters.v bit-exact against the golden vectors
+rtl/       Verilog: ab_filters.v (filter chain), ab_decide.v (decision logic), ab_core.v
+tb/filters/, tb/decide/, tb/core/  cocotb testbenches, bit-exact against the golden vectors
+tb/common/   event checker shared by the testbenches
 tb/vectors/  golden-vector smoke set for the RTL testbench (committed)
 tb/toolcheck/  end-to-end self-test of cocotb + Icarus
 scripts/   get_mitdb.ps1 (download, SHA-256 check), setup_wsl.sh, wsl_make.ps1

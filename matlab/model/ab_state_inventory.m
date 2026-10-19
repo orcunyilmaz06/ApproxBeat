@@ -4,7 +4,10 @@ function T = ab_state_inventory(p)
 %   logic for parameter set p: block, register, words, bits per word and total bits.
 %   Word lengths come from ab_int_widths(p), so T tracks the approximation knobs.
 %   Structure as in docs/algorithm.md: the low-pass in Pan & Tompkins' recursive form,
-%   running sums for the high-pass and the MWI, age counters for event positions.
+%   running sums for the high-pass and the MWI, age counters for event positions. The
+%   'RTL sequencing' rows are what the four-phase RTL adds on top of the model's state
+%   (rtl/ab_decide.v, rtl/ab_core.v): input latch, the classified peak, phase and flags,
+%   and the event outputs. The total is the flip-flop count of rtl/ab_core.v.
 w  = ab_int_widths(p);
 a  = p.age_bits;
 m  = w.mwi.bits;
@@ -28,9 +31,14 @@ rows = {
     'QRS history',   'QRS flag, age of last QRS',        1,               1 + a
     'QRS history',   'slope of last QRS',                1,               s
     'QRS history',   'RR average (3 fraction bits)',     1,               a + 3
+    'QRS history',   'RR missed limit',                  1,               a + 1
     'searchback',    'valid flag, value',                1,               1 + m
     'searchback',    'age, R-peak age',                  2,               a
     'searchback',    'slope',                            1,               s
+    'RTL sequencing','input latch: mwi, sq, |hp|',       1,               m + s + w.ahp.bits
+    'RTL sequencing','classified peak: value, age, slope, R-peak age', 1, m + nbits(p.pk_timeout) + s + a
+    'RTL sequencing','phase, result, peak and filter-done flags', 1,      7
+    'RTL sequencing','event outputs (done, peak, class, beat, kind, R-peak age)', 1, 6 + a
     };
 T = cell2table(rows, 'VariableNames', {'block', 'register', 'words', 'bits'});
 T.total = T.words .* T.bits;

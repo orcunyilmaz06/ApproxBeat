@@ -70,11 +70,36 @@ values. `tb/filters` compares those wires with columns 1-5 of `samples` on every
     scripts\wsl_make.ps1 tb\filters AB_FULL=1   also all 48 records, ~25 min;
                                                 writes results/rtl_filters.md
 
+## Decision logic: `rtl/ab_decide.v`
+
+Ports: `clk`, `rst_n`, `in_valid`, `mwi[20:0]`, `sq[15:0]` and `hp[12:0]` (signed) in, and
+`done`, `peak_valid`, `peak_class[1:0]`, `beat_valid`, `beat_kind` and `beat_r_age[10:0]`
+out. Each sample runs through four phases in the model's order:
+
+- PEAK: age counters, peak detector and segment maxima.
+- CLASS: startup, or classification of the peak.
+- SEARCH: searchback.
+- BOOK: QRS bookkeeping.
+
+The inputs must stay stable from `in_valid` until `done`. `peak_valid` pulses in the
+cycle after CLASS, while SPKI, NPKI and THR1 hold their values after the
+classification. `beat_valid` and `done` pulse in the cycle after BOOK. `tb/decide` feeds
+the golden `mwi`, `sq` and `hp` and compares every peak and beat event.
+
+## Core: `rtl/ab_core.v`
+
+`ab_filters` and `ab_decide` together: `in_adu` in, the events of `ab_decide` out, one
+sample per `done` (6 clock cycles). `tb/core` checks it end to end, from the ADC codes:
+
+    scripts\wsl_make.ps1 tb\core                smoke set, ~4 s
+    scripts\wsl_make.ps1 tb\core AB_FULL=1      also all 48 records, ~55 min;
+                                                writes results/rtl_core.md
+
 ## What the RTL must reproduce
 
-The core takes one sample per `in_valid` strobe and may spend a fixed number of clock
-cycles on it. The planned ports are `clk`, `rst_n`, `in_valid`, `in_adu[10:0]`,
-`beat_valid`, `beat_kind`, `beat_r_age[10:0]`.
+The core takes one sample per `in_valid` strobe and spends a fixed number of clock
+cycles on it. Its ports are `clk`, `rst_n`, `in_valid`, `in_adu[10:0]`, `done`,
+`beat_valid`, `beat_kind`, `beat_r_age[10:0]`, `peak_valid` and `peak_class[1:0]`.
 
 1. **Reset.** After `rst_n`, every register is 0, except the RR average accumulator,
    which is `8 * rr_init` = 1600, and the RR limit, which is 331. The first sample after

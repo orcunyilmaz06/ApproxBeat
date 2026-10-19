@@ -1,0 +1,4 @@
+# Python packages for the cocotb testbenches (installed by scripts/setup_wsl.sh)
+cocotb==2.1.0
+find_libpython==0.5.1
+numpy==2.5.4

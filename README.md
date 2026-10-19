@@ -93,8 +93,10 @@ matlab -batch "cd('matlab'); ab_setup; ab_run_eval"
 
 The first command downloads ~98 MB from PhysioNet and checks it. The second runs the unit
 tests, and the third scores all 48 records and writes `results/float_baseline.{csv,md}`.
-`ab_int_study` (about 10 minutes) regenerates every integer-model result. To see what the
-detector does, run this inside MATLAB:
+`ab_int_study` (about 10 minutes) regenerates every integer-model result. The RTL
+testbenches run in WSL2. `scripts/setup_wsl.sh` sets up cocotb and Icarus Verilog and
+self-tests them, and `scripts/wsl_make.ps1 tb\<bench>` runs a testbench from Windows. To
+see what the detector does, run this inside MATLAB:
 
 ```
 cd matlab; ab_setup
@@ -119,7 +121,8 @@ matlab/
   eval/    beat matching, scoring (ab_run_eval), studies, golden vectors, plots
   tests/   unit tests, run by ab_test
 tb/vectors/  golden-vector smoke set for the RTL testbench (committed)
-scripts/   get_mitdb.ps1: download and SHA-256 check
+tb/toolcheck/  end-to-end self-test of cocotb + Icarus
+scripts/   get_mitdb.ps1 (download, SHA-256 check), setup_wsl.sh, wsl_make.ps1
 docs/      algorithm spec, evaluation protocol, decision log, roadmap
 results/   written by scripts, never edited by hand
 data/      MIT-BIH, not committed

@@ -64,6 +64,11 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
   to `data/golden` (~410 MB, ~20 s): `matlab -batch "cd('matlab'); ab_setup; ab_write_golden"`.
   Smoke set to `tb/vectors` (committed): `... ab_write_golden('smoke')`.
 - README figures: `matlab -batch "cd('matlab'); ab_setup; ab_make_figures"`
+- Run a cocotb testbench in WSL from Windows (extra arguments go to make):
+  `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\wsl_make.ps1 tb\toolcheck`
+- Rebuild the WSL venv and self-test:
+  `wsl -d Ubuntu-24.04 --cd <repo> -- bash scripts/setup_wsl.sh`. Commands with nested
+  quotes get mangled between PowerShell and WSL, so put them in a script file.
 - Download data (~98 MB; PhysioNet is slow, ~20-40 min):
   `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\get_mitdb.ps1`
 
@@ -72,9 +77,15 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
 - Windows 11 with MATLAB R2026b (no Signal Processing Toolbox installed, and none needed)
   and Git for Windows. The repo lives in a OneDrive-synced Desktop folder. Work on
   `feat/...` branches and merge into `main`.
-- Planned for the RTL stages: WSL2 (Ubuntu) with Python 3, cocotb and Icarus Verilog or
-  Verilator, plus LibreLane via Nix. None of these are installed yet. Clone the repo inside
-  the WSL file system rather than working on `/mnt/c` (much faster). See `docs/ROADMAP.md`.
+- RTL toolchain in WSL2 (WSL 3.0.3), distribution `Ubuntu-24.04`: Icarus Verilog 12.0,
+  make and git from apt. A Python 3.12 venv at `/opt/approxbeat/venv` holds the versions
+  pinned in `tb/requirements.txt` (cocotb 2.1.0, numpy). `scripts/setup_wsl.sh` rebuilds
+  it and ends with an end-to-end self-test (`tb/toolcheck`).
+- One repo, on Windows. WSL reads the sources through `/mnt/c`, and git runs only on the
+  Windows side. Build output goes to `~/.cache/approxbeat` inside Linux, never into the
+  OneDrive folder. `.gitattributes` keeps LF line endings for the files Linux tools read
+  (`*.sh`, `*.py`, `*.v`, `Makefile`).
+- LibreLane (via Nix) is not installed yet.
 
 ## Conventions
 

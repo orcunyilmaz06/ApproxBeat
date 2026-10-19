@@ -13,7 +13,10 @@ Shuttle dates were checked against <https://tinytapeout.com/runs> on 2026-10-19.
     and record 228 is no longer a tipping point (`results/searchback_study.md`).
   - Golden vectors, done: the format and RTL contract (`docs/golden_vectors.md`), the full
     set and the committed smoke set.
-  - Still open in week 2: the WSL2 toolchain (git, Python 3, cocotb, Icarus Verilog).
+  - WSL2 toolchain, done: Ubuntu 24.04, Icarus Verilog 12, cocotb 2.1, with an
+    end-to-end self-test (`scripts/setup_wsl.sh`, `scripts/wsl_make.ps1`).
+- **Week 3, next.** The RTL filter chain, checked bit-exact against the smoke vectors,
+  then against all 48 records.
 
 ## Shuttles
 

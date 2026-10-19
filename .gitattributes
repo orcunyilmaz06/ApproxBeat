@@ -1,6 +1,13 @@
 # Store text with LF in the repo so Windows and WSL checkouts agree
 * text=auto
 *.ps1 text eol=crlf
+# Files that Linux tools (bash, make, Python, Icarus) read keep LF in the Windows checkout too
+*.sh text eol=lf
+*.py text eol=lf
+*.v text eol=lf
+*.sv text eol=lf
+*.mk text eol=lf
+Makefile text eol=lf
 *.png binary
 *.mat binary
 *.npy binary

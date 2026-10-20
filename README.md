@@ -134,7 +134,8 @@ matlab/
   eval/    beat matching, scoring (ab_run_eval), studies, golden vectors, plots
   tests/   unit tests, run by ab_test
 src/       Verilog: ab_filters.v (filter chain), ab_decide.v (decision logic), ab_core.v,
-           project.v (Tiny Tapeout top, tt_um_approxbeat); config.json (LibreLane settings)
+           project.v (Tiny Tapeout top, tt_um_orcunyilmaz06_approxbeat);
+           config.json (LibreLane settings)
 info.yaml  Tiny Tapeout project description and pinout; docs/info.md is its datasheet page
 test/      Tiny Tapeout testbench: smoke vectors through the chip pins (also gate level)
 tb/filters/, tb/decide/, tb/core/  cocotb testbenches, bit-exact against the golden vectors
@@ -160,3 +161,10 @@ MIT-BIH Arrhythmia Database v1.0.0, PhysioNet, Open Data Commons Attribution Lic
   vol. 101, no. 23, pp. e215-e220, 2000.
 - ANSI/AAMI EC57, *Testing and reporting performance results of cardiac rhythm and ST
   segment measurement algorithms*.
+
+## License
+
+Apache-2.0 ([LICENSE](LICENSE)) for the code, the RTL and the documentation. The MIT-BIH
+data is not in the repository. The committed smoke vectors are derived from records 100
+and 210, which are under the Open Data Commons Attribution License v1.0
+([tb/vectors/README.md](tb/vectors/README.md)).

@@ -1,4 +1,4 @@
-"""Tiny Tapeout test of tt_um_approxbeat: the smoke vectors through the chip's pins only.
+"""Tiny Tapeout test of tt_um_orcunyilmaz06_approxbeat: the smoke vectors through its pins.
 
 Each ADC code goes in by the four-phase handshake of src/project.v (REQ, ACK); the BEAT,
 KIND and paged R-peak age and peak outputs must equal the integer model's beat and peak

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 orcunyilmaz06
+// SPDX-License-Identifier: Apache-2.0
+//
 // ApproxBeat on Tiny Tapeout: the Pan-Tompkins QRS detector (ab_core) behind a four-phase
 // handshake, so that a host at any speed can feed it one ADC sample at a time.
 //
@@ -17,7 +20,7 @@
 `default_nettype none
 `timescale 1ns / 1ps
 
-module tt_um_approxbeat (
+module tt_um_orcunyilmaz06_approxbeat (
     input  wire [7:0] ui_in,    // ADC sample bits 7..0 (11-bit code, 1024 = 0 mV)
     output wire [7:0] uo_out,   // paged result byte
     input  wire [7:0] uio_in,   // [2:0] ADC sample bits 10..8, [3] REQ, [4] PAGE

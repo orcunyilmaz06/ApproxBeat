@@ -79,9 +79,9 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
   test`. This is the TT layout: `test/` with `tb.v` and `test.py`, `info.yaml`,
   `docs/info.md`, `src/config.json`. TT's CI runs the same test, on the gate-level
   netlist too, so `test.py` must use the pins only.
-- Generic synthesis of the chip (`tt_um_approxbeat`; Yosys in WSL, ~10 s, writes
-  `results/synth_core.md`, which reconciles the flip-flops with the declared registers):
-  `scripts\wsl_make.ps1 flow\synth`.
+- Generic synthesis of the chip (`tt_um_orcunyilmaz06_approxbeat`; Yosys in WSL, ~10 s,
+  writes `results/synth_core.md`, which reconciles the flip-flops with the declared
+  registers): `scripts\wsl_make.ps1 flow\synth`.
 - Rebuild the WSL venv and self-test:
   `wsl -d Ubuntu-24.04 --cd <repo> -- bash scripts/setup_wsl.sh`. Commands with nested
   quotes get mangled between PowerShell and WSL, so put them in a script file.
@@ -112,6 +112,8 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
 - Verilog: Verilog-2005 that Yosys accepts, in `src/` (Tiny Tapeout builds only from
   there). One clock `clk`, synchronous active-low reset `rst_n` (the Tiny Tapeout
   convention), explicit `$signed`, and a cocotb test for every module. The chip top is
-  `tt_um_approxbeat` in `src/project.v`. A new source file goes into `info.yaml`
-  (`source_files`) and `test/Makefile` (`PROJECT_SOURCES`) too.
+  `tt_um_orcunyilmaz06_approxbeat` in `src/project.v`. A new source file goes into
+  `info.yaml` (`source_files`) and `test/Makefile` (`PROJECT_SOURCES`) too.
+- Commits use the GitHub noreply address of the owner (repository `user.email`), never a
+  personal one: the repository is public.
 - Code, comments, docs and commit messages are in English. The owner may chat in Turkish.

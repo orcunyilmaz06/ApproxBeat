@@ -1,7 +1,7 @@
 # Tiny Tapeout project information (TTGF26c, GF180). Format: ttgf-verilog-template.
 project:
   title:        "ApproxBeat: Pan-Tompkins ECG beat detector"
-  author:       ""      # TODO: your name
+  author:       "orcunyilmaz06"
   discord:      ""      # optional
   description:  "Streaming Pan-Tompkins QRS detector for 200 Hz ECG, bit-exact to its integer model on MIT-BIH"
   language:     "Verilog"
@@ -12,7 +12,7 @@ project:
   tiles: "4x2"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 3x4, 4x4
 
   # Your top module name must start with "tt_um_".
-  top_module:  "tt_um_approxbeat"
+  top_module:  "tt_um_orcunyilmaz06_approxbeat"
 
   # Source files, in ./src, one per line. test/Makefile lists them too (PROJECT_SOURCES).
   source_files:

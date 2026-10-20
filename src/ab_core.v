@@ -1,3 +1,6 @@
+// Copyright (c) 2026 orcunyilmaz06
+// SPDX-License-Identifier: Apache-2.0
+//
 // ApproxBeat core: filter chain + decision logic, ADC codes in, beat events out.
 //
 // in_valid presents one sample; the filters register its stage values at the end of that

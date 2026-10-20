@@ -1,7 +1,11 @@
+// Copyright (c) 2026 orcunyilmaz06
+// SPDX-License-Identifier: Apache-2.0
+//
 `default_nettype none
 `timescale 1ns / 1ps
 
-// Tiny Tapeout testbench: tt_um_approxbeat with named wires for the handshake outputs.
+// Tiny Tapeout testbench: tt_um_orcunyilmaz06_approxbeat, with named wires for the
+// handshake outputs.
 // test.py drives ui_in and uio_in. The same file runs against the gate-level netlist
 // (GL_TEST), so test.py uses the pins only.
 module tb ();
@@ -29,7 +33,7 @@ module tb ();
   wire beat = uio_out[6];
   wire kind = uio_out[5];
 
-  tt_um_approxbeat user_project (
+  tt_um_orcunyilmaz06_approxbeat user_project (
 `ifdef GL_TEST
       .VPWR(VPWR),
       .VGND(VGND),

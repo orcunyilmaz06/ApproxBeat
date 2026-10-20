@@ -1,4 +1,4 @@
-# Tiny Tapeout testbench of tt_um_approxbeat (layout of ttgf-verilog-template).
+# Tiny Tapeout testbench of tt_um_orcunyilmaz06_approxbeat (layout: ttgf-verilog-template).
 #   make              RTL: the committed smoke vectors through the chip's pins (test.py)
 #   make GATES=yes    the same against gate_level_netlist.v (run by the TT GL-test action)
 # From Windows: scripts\wsl_make.ps1 test

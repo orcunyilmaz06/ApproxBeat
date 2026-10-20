@@ -3,7 +3,7 @@
 One entry per algorithm or protocol decision: what was decided, why, and the measured
 effect where there is one. Newest at the bottom. Each entry cites the results files as
 they were when it was written, and git history keeps those versions: D1-D7 at commit
-3a535a3, D8-D13 at 60b857a. Later changes are added as updates under the entry.
+7838fa9, D8-D13 at e813fee. Later changes are added as updates under the entry.
 
 ## 2026-10-19: D1. Run the detector at 200 Hz on resampled MIT-BIH
 
@@ -240,13 +240,13 @@ Area plan, with D15:
 
 ## 2026-10-20: D17. Area step 1: one shared adder, no input latch
 
-Measured by generic synthesis (`flow/synth`). The reports are at commits e320531 and
-cdd8653, and `results/synth_core.md` holds the last row.
+Measured by generic synthesis (`flow/synth`). The reports are at commits fc73d89 and
+d9be4ee, and `results/synth_core.md` holds the last row.
 
 | RTL | `ab_decide` logic cells | `ab_decide` flip-flops | design logic cells | design flip-flops |
 |---|---:|---:|---:|---:|
-| four phases, own adders (e320531) | 4,434 | 419 | 7,057 | 1,516 |
-| one shared adder (cdd8653) | 2,795 | 441 | 5,400 | 1,538 |
+| four phases, own adders (fc73d89) | 4,434 | 419 | 7,057 | 1,516 |
+| one shared adder (d9be4ee) | 2,795 | 441 | 5,400 | 1,538 |
 | plus no input latch | 2,789 | 392 | 5,401 | 1,489 |
 
 **Shared adder.** Every sum of the decision logic now runs through one 23-bit
@@ -290,7 +290,7 @@ Measured by generic synthesis (`flow/synth`, `results/synth_core.md`):
 
 | RTL | `ab_decide` logic cells | `ab_decide` flip-flops | design logic cells | design flip-flops |
 |---|---:|---:|---:|---:|
-| D17 (6f29b60) | 2,789 | 392 | 5,401 | 1,489 |
+| D17 (7c8df1f) | 2,789 | 392 | 5,401 | 1,489 |
 | classification in PEAK, first version | 3,013 | 338 | 5,618 | 1,435 |
 | the same, flat candidate update | 2,836 | 338 | 5,441 | 1,435 |
 
@@ -407,3 +407,16 @@ against the golden tables, in about 10 s.
 **Open.** These are the owner's to fill in: the author and the GitHub username in the
 top module name (now `tt_um_approxbeat`), a license for the repository, and the GitHub
 repository that the TT actions need.
+
+## 2026-10-20: D21. Publication: author, license, top-module name, commit email
+
+- **Author and top module.** The author is `orcunyilmaz06`, the owner's GitHub username.
+  The top module becomes `tt_um_orcunyilmaz06_approxbeat`, as Tiny Tapeout recommends,
+  so that the name is unique on the shuttle.
+- **License.** Apache-2.0, the license of the Tiny Tapeout template. `src/*.v` carry an
+  SPDX header.
+- **Commit email.** The repository is public, so before the first push every commit was
+  rewritten to the owner's GitHub noreply address, and new commits use it too. This
+  changed every commit hash. The hashes quoted in this log were mapped to the new ones,
+  for example D17's reports at fc73d89 and d9be4ee. The golden-vector manifest and the
+  reports that quote it were regenerated.

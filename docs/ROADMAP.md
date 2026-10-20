@@ -28,8 +28,9 @@ Shuttle dates were checked against <https://tinytapeout.com/runs> on 2026-10-19.
 - **Word lengths of D13, checked (2026-10-20).** The DS1 choice failed on DS2, and v1
   keeps 16 bits (D19). The RTL now takes the word length as a parameter, for the
   accuracy-area front.
-- **Tiny Tapeout wrapper, done (2026-10-20).** `src/project.v` (`tt_um_approxbeat`)
-  takes one sample per four-phase handshake and holds paged results. `info.yaml`,
+- **Tiny Tapeout wrapper, done (2026-10-20).** `src/project.v`
+  (`tt_um_orcunyilmaz06_approxbeat`) takes one sample per four-phase handshake and holds
+  paged results. `info.yaml`,
   `docs/info.md` and `test/` follow the ttgf-verilog-template, and the pin-level test
   passes on the smoke vectors. The whole chip has 1,458 flip-flops and 5,392 logic cells
   (D20).

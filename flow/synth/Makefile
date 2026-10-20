@@ -5,7 +5,7 @@
 # From Windows: scripts\wsl_make.ps1 flow\synth
 RTL  = $(CURDIR)/../../src
 SRC  = $(RTL)/ab_filters.v $(RTL)/ab_decide.v $(RTL)/ab_core.v $(RTL)/project.v
-TOP  = tt_um_approxbeat
+TOP  = tt_um_orcunyilmaz06_approxbeat
 OUT ?= $(HOME)/.cache/approxbeat/synth
 YOSYS_CMDS = read_verilog $(SRC); hierarchy -check -top $(TOP); synth -top $(TOP); \
              tee -q -o $(OUT)/stat.json stat -json; \

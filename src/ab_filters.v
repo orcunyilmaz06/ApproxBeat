@@ -1,3 +1,6 @@
+// Copyright (c) 2026 orcunyilmaz06
+// SPDX-License-Identifier: Apache-2.0
+//
 // ApproxBeat: Pan-Tompkins filter chain (low-pass, high-pass, derivative, squarer, MWI).
 //
 // Bit-exact to matlab/model/ab_pt_filters.m in integer mode, with SQ_SHIFT and SQ_BITS equal

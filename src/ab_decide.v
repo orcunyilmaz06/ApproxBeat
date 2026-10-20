@@ -1,3 +1,6 @@
+// Copyright (c) 2026 orcunyilmaz06
+// SPDX-License-Identifier: Apache-2.0
+//
 // ApproxBeat: Pan-Tompkins decision logic (peak detector, adaptive thresholds, searchback).
 //
 // Bit-exact to matlab/model/ab_pt_decide.m in integer mode with the baseline parameters

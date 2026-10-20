@@ -109,8 +109,8 @@ sample per `done` (4 to 13 clock cycles). `tb/core` checks it end to end, from t
 
 ## Chip: `src/project.v`
 
-`tt_um_approxbeat`, the Tiny Tapeout top, around `ab_core`. It takes one sample per
-four-phase handshake and holds the results of the last sample on the pins (protocol and
+`tt_um_orcunyilmaz06_approxbeat`, the Tiny Tapeout top, around `ab_core`. It takes one
+sample per four-phase handshake and holds the results of the last sample on the pins (protocol and
 pinout: `docs/info.md`, D20). `test/` checks it from the pins alone, so the same test
 runs on the gate-level netlist. Every peak (sample, class) and every beat (sample,
 R-peak age, kind) of the smoke set must equal the golden tables:

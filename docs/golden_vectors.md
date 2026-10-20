@@ -74,28 +74,30 @@ values. `tb/filters` compares those wires with columns 1-5 of `samples` on every
 
 Ports: `clk`, `rst_n`, `in_valid`, `mwi[20:0]`, `sq[15:0]` and `hp[12:0]` (signed) in, and
 `done`, `peak_valid`, `peak_class[1:0]`, `beat_valid`, `beat_kind` and `beat_r_age[10:0]`
-out. Each sample runs through the model's steps in the model's order, one state per
-step:
+out. Each sample runs through the model's steps in the model's order:
 
-- PEAK: age counters, peak detector and segment maxima.
+- PEAK: age counters. When the peak detector confirms a peak, it is classified in
+  the same cycle.
 - LRN, INIT: learning phase and initial levels (startup only).
-- CLS: classification of the peak, then CLIP, LD, LU (QRS) or ND, NU (noise) for the
-  level update, and TD, TU for the threshold.
+- CLIP, LD, LU (QRS) or ND, NU (noise): level update, then TD, TU for the threshold.
 - SEARCH: searchback, then SD, SU, TD, TU when it fires.
-- BOOK: QRS bookkeeping.
+- BOOK: QRS bookkeeping, then the peak detector and the segment maxima advance.
 
-Every sum goes through one shared 23-bit adder, one per cycle (D17), so a sample takes
-4 to 14 clock cycles. The inputs are not latched: they must stay stable from `in_valid`
-until `done`. `peak_valid` pulses in the cycle after the threshold update of a
-classified peak (after CLS for a peak in the refractory period), while SPKI, NPKI and
-THR1 hold their values after the classification. `beat_valid` and `done` pulse in the
+The peak detector's registers advance last. No step in between reads their new
+values, so the order of effects is the model's. Until BOOK they still describe the
+confirmed peak, which therefore needs no copy (D18). Every sum goes through one shared
+23-bit adder, one per cycle (D17), so a sample takes 4 to 13 clock cycles. The inputs
+are not latched: they must stay stable from `in_valid` until `done`. `peak_valid`
+pulses in the cycle after the threshold update of a classified peak (after PEAK for a
+peak in the refractory period), while SPKI, NPKI and THR1 hold their values after the
+classification. `beat_valid` and `done` pulse in the
 cycle after BOOK. `tb/decide` feeds the golden `mwi`, `sq` and `hp` and compares every
 peak and beat event.
 
 ## Core: `rtl/ab_core.v`
 
 `ab_filters` and `ab_decide` together: `in_adu` in, the events of `ab_decide` out, one
-sample per `done` (4 to 14 clock cycles). `tb/core` checks it end to end, from the ADC codes:
+sample per `done` (4 to 13 clock cycles). `tb/core` checks it end to end, from the ADC codes:
 
     scripts\wsl_make.ps1 tb\core                smoke set, ~4 s
     scripts\wsl_make.ps1 tb\core AB_FULL=1      also all 48 records, ~55 min;
@@ -105,7 +107,7 @@ sample per `done` (4 to 14 clock cycles). `tb/core` checks it end to end, from t
 
 ## What the RTL must reproduce
 
-The core takes one sample per `in_valid` strobe and spends 4 to 14 clock cycles on it,
+The core takes one sample per `in_valid` strobe and spends 4 to 13 clock cycles on it,
 ending with `done`; the next strobe may come after `done`. Its ports are `clk`, `rst_n`, `in_valid`, `in_adu[10:0]`, `done`,
 `beat_valid`, `beat_kind`, `beat_r_age[10:0]`, `peak_valid` and `peak_class[1:0]`.
 

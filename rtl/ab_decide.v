@@ -2,14 +2,17 @@
 //
 // Bit-exact to matlab/model/ab_pt_decide.m in integer mode with the baseline parameters
 // (docs/algorithm.md). One sample per in_valid, processed in the model's order:
-//   PEAK            age counters, MWI peak detector, segment maxima of sq and |hp|
+//   PEAK            age counters; a confirmed MWI peak is classified in the same cycle
 //   LRN, INIT       startup: learning window, then the initial levels
-//   CLS ... NU      classification of a confirmed peak and its level update
+//   CLIP ... NU     level update after the classification
 //   TD, TU          threshold update THR1 = NPKI + (SPKI - NPKI) >>> 2
 //   SEARCH, SD, SU  searchback
-//   BOOK            QRS bookkeeping: RR average, last QRS, beat output
-// Every sum is computed by one shared 23-bit adder/subtractor, one operation per cycle
-// (D17); comparisons keep their own comparators. A sample takes 4 to 14 cycles.
+//   BOOK            QRS bookkeeping (RR average, last QRS, beat output), then the peak
+//                   detector and the segment maxima of sq and |hp| advance
+// The peak detector advances last, so until BOOK its registers still describe the
+// classified peak and need no copy (D18). Every sum is computed by one shared 23-bit
+// adder/subtractor, one operation per cycle (D17); comparisons keep their own
+// comparators. A sample takes 4 to 13 cycles.
 // peak_valid pulses once the levels hold their values after the classification;
 // beat_valid and done pulse in the cycle after BOOK. Event positions are age counters
 // (samples since the event) that saturate at 2047.
@@ -40,9 +43,9 @@ module ab_decide (
     localparam [11:0] RR_LIM0    = 12'd331;   // 200 + 100 + 25 + 6
 
     localparam [3:0] S_IDLE = 4'd0,  S_PEAK = 4'd1,  S_LRN = 4'd2,     S_INIT = 4'd3,
-                     S_CLS  = 4'd4,  S_CLIP = 4'd5,  S_LD = 4'd6,      S_LU = 4'd7,
-                     S_ND   = 4'd8,  S_NU   = 4'd9,  S_TD = 4'd10,     S_TU = 4'd11,
-                     S_SEARCH = 4'd12, S_SD = 4'd13, S_SU = 4'd14,     S_BOOK = 4'd15;
+                     S_CLIP = 4'd4,  S_LD   = 4'd5,  S_LU  = 4'd6,     S_ND   = 4'd7,
+                     S_NU   = 4'd8,  S_TD   = 4'd9,  S_TU  = 4'd10,    S_SEARCH = 4'd11,
+                     S_SD   = 4'd12, S_SU   = 4'd13, S_BOOK = 4'd14;
     (* fsm_encoding = "binary" *) reg [3:0] state;
 
     // the sample being processed: read straight from the inputs, no latch (D17)
@@ -56,10 +59,6 @@ module ab_decide (
     reg [15:0] seg_sq;                        // largest sq since the previous peak (slope)
     reg [11:0] seg_hp;                        // largest |hp| since the previous peak
     reg [10:0] seg_hp_age;
-    reg [20:0] c_val;                         // the peak being classified
-    reg [5:0]  c_age;
-    reg [15:0] c_slope;
-    reg [10:0] c_r_age;
 
     // levels and startup
     reg [20:0] spk, npk, thr1;                // THR2 = thr1 >> 1
@@ -96,12 +95,21 @@ module ab_decide (
     wire [15:0] seg_sq_base  = confirm ? 16'd0 : seg_sq;
     wire [11:0] seg_hp_base  = confirm ? 12'd0 : seg_hp;
 
-    // ---- CLS: classification (comparators) ---------------------------------------------
-    wire signed [11:0] dt   = $signed({1'b0, qrs_age}) - $signed({6'd0, c_age});
+    // the confirmed peak: the peak detector's registers, which hold still until BOOK
+    wire [20:0] c_val   = pk_max;
+    wire [5:0]  c_age   = pk_age_a;
+    wire [15:0] c_slope = seg_sq;
+    wire [10:0] c_r_age = seg_hp_age_a;
+
+    // ---- PEAK: classification (comparators), on the ages after this sample's increment --
+    wire [10:0] qrs_age_i = inc11(qrs_age);
+    wire signed [11:0] dt   = $signed({1'b0, qrs_age_i}) - $signed({6'd0, c_age});
     wire        refr_ok     = !have_qrs || (dt > REFRACTORY);
     wire        twave       = have_qrs && (dt < TWAVE_WIN) && (c_slope < (last_slope >> 2));
     wire        is_qrs      = (c_val > thr1) && !twave;
     wire        take_cand   = !twave && (c_val > (thr1 >> 1)) && (!sb_valid || (c_val > sb_val));
+    wire        classify    = (idx >= LEARN_END) && confirm;          // a peak is classified now
+    wire        cand_now    = classify && refr_ok && !is_qrs && take_cand;  // new searchback candidate
     wire [21:0] pk_in       = ({1'b0, c_val} < t[21:0]) ? {1'b0, c_val} : t[21:0];  // min(peak, clip)
     wire        sb_fire     = (found == 2'd0) && sb_valid && ({1'b0, qrs_age} > rr_lim);
 
@@ -150,7 +158,6 @@ module ab_decide (
             idx <= 0;
             rising <= 1'b0; pk_max <= 0; pk_age <= 0;
             seg_sq <= 0; seg_hp <= 0; seg_hp_age <= 0;
-            c_val <= 0; c_age <= 0; c_slope <= 0; c_r_age <= 0;
             spk <= 0; npk <= 0; thr1 <= 0; learn_max <= 0; learn_sum <= 0;
             have_qrs <= 1'b0; qrs_age <= 0; last_slope <= 0;
             rr_acc <= RR_ACC0; rr_lim <= RR_LIM0;
@@ -161,34 +168,34 @@ module ab_decide (
             case (state)
             S_IDLE: if (in_valid) state <= S_PEAK;
 
+            // age counters, then the classification of a confirmed peak
             S_PEAK: begin
-                qrs_age  <= inc11(qrs_age);
-                sb_age   <= inc11(sb_age);
-                sb_r_age <= inc11(sb_r_age);
-                if (rising) begin
-                    if (up) begin
-                        pk_max <= mwi; pk_age <= 6'd0;
-                    end else if (confirm) begin
-                        c_val <= pk_max; c_age <= pk_age_a; c_slope <= seg_sq; c_r_age <= seg_hp_age_a;
-                        rising <= 1'b0; pk_max <= mwi; pk_age <= pk_age_a;
-                    end else begin
-                        pk_age <= pk_age_a;
-                    end
-                end else if (up) begin
-                    rising <= 1'b1; pk_max <= mwi; pk_age <= 6'd0;
+                qrs_age <= qrs_age_i;
+                // one choice per register: a flat condition keeps the multiplexers single
+                if (cand_now) begin
+                    sb_valid <= 1'b1; sb_val <= c_val; sb_age <= {5'd0, c_age};
+                    sb_slope <= c_slope; sb_r_age <= c_r_age;
                 end else begin
-                    pk_max <= mwi; pk_age <= pk_age_a;
+                    sb_age <= inc11(sb_age); sb_r_age <= inc11(sb_r_age);
                 end
-                seg_sq <= (sq > seg_sq_base) ? sq : seg_sq_base;
-                if (ahp > seg_hp_base) begin
-                    seg_hp <= ahp; seg_hp_age <= 11'd0;
+                if (idx < BLANK) begin                          // filters settling
+                    state <= S_BOOK;
+                end else if (idx < LEARN_END) begin
+                    state <= S_LRN;
+                end else if (!confirm) begin
+                    state <= S_SEARCH;
+                end else if (!refr_ok) begin
+                    peak_class <= 2'd0;
+                    peak_valid <= 1'b1;
+                    state <= S_SEARCH;
+                end else if (is_qrs) begin
+                    peak_class <= 2'd1;
+                    found <= 2'd1;
+                    state <= S_CLIP;
                 end else begin
-                    seg_hp <= seg_hp_base; seg_hp_age <= seg_hp_age_a;
+                    peak_class <= twave ? 2'd3 : 2'd2;
+                    state <= S_ND;
                 end
-                if (idx < BLANK)          state <= S_BOOK;     // filters settling
-                else if (idx < LEARN_END) state <= S_LRN;
-                else if (confirm)         state <= S_CLS;
-                else                      state <= S_SEARCH;
             end
 
             // learning window, then the initial levels
@@ -204,25 +211,7 @@ module ab_decide (
                 state   <= S_TD;
             end
 
-            // classification of the confirmed peak
-            S_CLS: begin
-                if (!refr_ok) begin
-                    peak_class <= 2'd0;
-                    peak_valid <= 1'b1;
-                    state <= S_SEARCH;
-                end else if (is_qrs) begin
-                    peak_class <= 2'd1;
-                    found <= 2'd1;
-                    state <= S_CLIP;
-                end else begin
-                    peak_class <= twave ? 2'd3 : 2'd2;
-                    if (take_cand) begin
-                        sb_valid <= 1'b1; sb_val <= c_val; sb_age <= {5'd0, c_age};
-                        sb_slope <= c_slope; sb_r_age <= c_r_age;
-                    end
-                    state <= S_ND;
-                end
-            end
+            // level update after the classification
             S_CLIP: begin t <= alu_r; state <= S_LD; end                // clip = 1.25 SPKI
             S_LD:   begin t <= alu_r; state <= S_LU; end                // min(peak, clip) - SPKI
             S_LU:   begin spk <= alu_r[20:0]; state <= S_TD; end
@@ -268,6 +257,26 @@ module ab_decide (
                 end
                 found <= 2'd0;
                 in_sb <= 1'b0;
+                // the peak detector and the segment maxima advance last
+                if (rising) begin
+                    if (up) begin
+                        pk_max <= mwi; pk_age <= 6'd0;
+                    end else if (confirm) begin
+                        rising <= 1'b0; pk_max <= mwi; pk_age <= pk_age_a;
+                    end else begin
+                        pk_age <= pk_age_a;
+                    end
+                end else if (up) begin
+                    rising <= 1'b1; pk_max <= mwi; pk_age <= 6'd0;
+                end else begin
+                    pk_max <= mwi; pk_age <= pk_age_a;
+                end
+                seg_sq <= (sq > seg_sq_base) ? sq : seg_sq_base;
+                if (ahp > seg_hp_base) begin
+                    seg_hp <= ahp; seg_hp_age <= 11'd0;
+                end else begin
+                    seg_hp <= seg_hp_base; seg_hp_age <= seg_hp_age_a;
+                end
                 idx   <= (idx == LEARN_END) ? idx : idx + 9'd1;
                 done  <= 1'b1;
                 state <= S_IDLE;

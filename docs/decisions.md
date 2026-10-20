@@ -275,3 +275,44 @@ The core is bit-exact end to end on all 48 records: 276,457 peak and 109,794 bea
 events, the same table as before the area step (`results/rtl_core.md`). That run used
 the new `full-parallel` target, which splits the 48 records over 6 simulators and takes
 13 minutes instead of about 55.
+
+## 2026-10-20: D18. Area step 2: the classified peak needs no copy
+
+Before this step, PEAK advanced the peak detector and copied a confirmed peak into four
+registers: `c_val`, `c_age`, `c_slope` and `c_r_age`, 54 bits in all. CLS then
+classified it one cycle later. Now the peak detector and the segment maxima advance
+last, in BOOK. No step in between reads their new values, so until BOOK their registers
+still hold the confirmed peak. The classification reads them directly, in the PEAK
+cycle. The four registers become wires, the CLS state goes away, and a confirmed peak
+takes one cycle less, so a sample now takes 4 to 13 cycles.
+
+Measured by generic synthesis (`flow/synth`, `results/synth_core.md`):
+
+| RTL | `ab_decide` logic cells | `ab_decide` flip-flops | design logic cells | design flip-flops |
+|---|---:|---:|---:|---:|
+| D17 (6f29b60) | 2,789 | 392 | 5,401 | 1,489 |
+| classification in PEAK, first version | 3,013 | 338 | 5,618 | 1,435 |
+| the same, flat candidate update | 2,836 | 338 | 5,441 | 1,435 |
+
+**The first version cost logic.** It saved the 54 flip-flops but added 224 logic cells.
+The searchback-candidate update sat at the bottom of the classification's if-else
+chain and overrode the age increments of `sb_age` and `sb_r_age`. Yosys built an
+11-bit multiplexer for every level of that chain: six more `$mux_11` before mapping and
+139 more multiplexer cells after it. ABC did not fold them. One flat condition
+(`cand_now`) gives each register a single choice, and the multiplexer count returns to
+D17's.
+
+**Net.** The design has 54 fewer flip-flops (-3.6 %) and 40 more logic cells (+0.7 %).
+In the decision logic the logic cells are 1.7 % above D17, a little more than the
+noise. The classification now reads the incremented RR age and peak age, where it used
+to read registers. A flip-flop with reset and enable costs several gates of area, so
+the step is a net gain, but only LibreLane on a real PDK can size it.
+
+**Inventory.** `ab_state_inventory` drops its classified-peak row and counts 1,463
+flip-flops, which equals the declared RTL register bits. The word-length grid of
+`results/int_study.md` moves by the same 54. Its accuracy figures are unchanged, and
+the 8-bit `sq` variant of D13 needs 1,127 flip-flops (-23 %).
+
+**Verified.** Bit-exact on the smoke vectors (decide, core) and end to end on all 48
+records: 276,457 peak and 109,794 beat events, the same table as before
+(`results/rtl_core.md`, `full-parallel`, 15 minutes).

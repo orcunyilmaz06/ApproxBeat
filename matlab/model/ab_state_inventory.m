@@ -6,10 +6,10 @@ function T = ab_state_inventory(p)
 %   Structure as in docs/algorithm.md: the low-pass in Pan & Tompkins' recursive form,
 %   running sums for the high-pass and the MWI, age counters for event positions. The
 %   'RTL sequencing' rows are what the sequenced RTL adds on top of the model's state
-%   (rtl/ab_decide.v, rtl/ab_core.v): phase and flags, the result register of the
+%   (src/ab_decide.v, src/ab_core.v): phase and flags, the result register of the
 %   shared adder (D17), and the event outputs. The classified peak needs no copy, since
 %   the peak detector holds it until the end of the sample (D18). The total is
-%   the declared register bits of rtl/ab_core.v (results/synth_core.md).
+%   the declared register bits of src/ab_core.v (results/synth_core.md).
 w  = ab_int_widths(p);
 a  = p.age_bits;
 m  = w.mwi.bits;

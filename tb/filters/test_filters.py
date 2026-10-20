@@ -1,4 +1,4 @@
-"""Bit-exact check of rtl/ab_filters.v against the integer model's golden vectors.
+"""Bit-exact check of src/ab_filters.v against the integer model's golden vectors.
 
 Every input sample is driven for one clock cycle; while it is applied, the stage values
 of that sample (lp_n, hp_n, der_n, sq_n, mwi_n) must equal its row of <stream>_samples.npy.
@@ -95,7 +95,7 @@ def write_report(counts):
         f"{datetime.datetime.now():%Y-%m-%d %H:%M}, {cocotb.SIM_NAME} {cocotb.SIM_VERSION}, "
         f"cocotb {cocotb.__version__}. Do not edit by hand.",
         "",
-        f"Every sample of every record: `lp`, `hp`, `der`, `sq` and `mwi` of `rtl/ab_filters.v` "
+        f"Every sample of every record: `lp`, `hp`, `der`, `sq` and `mwi` of `src/ab_filters.v` "
         f"equal the golden vectors of the integer model (model commit "
         f"{manifest.get('git_commit', 'unknown')}, `data/golden/manifest.json`).",
         "",

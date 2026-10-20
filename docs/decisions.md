@@ -190,11 +190,11 @@ QRS, for example a slow decay. That is left for later.
 
 ## 2026-10-20: D15. RTL architecture, first version
 
-**Filter chain** (`rtl/ab_filters.v`). It computes every stage of a sample in the clock
+**Filter chain** (`src/ab_filters.v`). It computes every stage of a sample in the clock
 cycle that brings it. The delay lines are packed shift registers. The design is written
 for correctness first, and area comes later.
 
-**Decision logic** (`rtl/ab_decide.v`). A four-phase state machine runs once per sample:
+**Decision logic** (`src/ab_decide.v`). A four-phase state machine runs once per sample:
 PEAK, CLASS, SEARCH, BOOK. This keeps the model's order inside a sample, including
 same-sample effects such as a searchback that fires on a candidate taken one phase
 earlier. A sample takes 6 clock cycles, while the ADC delivers one every 5 ms. The phases

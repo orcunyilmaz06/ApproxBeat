@@ -15,7 +15,7 @@ keep every claim checkable.
 |---|---|---|---|
 | Float model | `matlab/model/ab_pt_float.m` | MIT-BIH reference annotations | Se, +P per `docs/eval_protocol.md` |
 | Integer model | `matlab/model/ab_pt_int.m` | float model | accuracy delta measured and reported (`results/int_study.md`) |
-| RTL | `rtl/ab_core.v` = `ab_filters.v` + `ab_decide.v` | integer-model golden vectors (`docs/golden_vectors.md`) | bit-exact at every stage and every decision event, all 48 records (`results/rtl_filters.md`, `results/rtl_core.md`) |
+| RTL | `src/ab_core.v` = `ab_filters.v` + `ab_decide.v` | integer-model golden vectors (`docs/golden_vectors.md`) | bit-exact at every stage and every decision event, all 48 records (`results/rtl_filters.md`, `results/rtl_core.md`) |
 | GDS | `flow/` (planned) | RTL, gate-level simulation | DRC/LVS clean, timing met |
 
 A stage counts as correct only after its check against the stage before it passes.

@@ -1,7 +1,7 @@
 """Write results/synth_core.md from a Yosys run of flow/synth/Makefile.
 
 Usage: report.py <yosys output dir> <report.md> <state_inventory.md>
-Reads stat.json, stat_cmos.txt and netlist.json, and the register declarations of rtl/*.v,
+Reads stat.json, stat_cmos.txt and netlist.json, and the register declarations of src/*.v,
 then reconciles the flip-flops after synthesis with the declared register bits.
 """
 import datetime
@@ -12,7 +12,7 @@ from collections import Counter
 from pathlib import Path
 
 out, report, inventory = (Path(a) for a in sys.argv[1:4])
-rtl = report.resolve().parents[1] / "rtl"
+rtl = report.resolve().parents[1] / "src"
 stat = json.loads((out / "stat.json").read_text())
 net = json.loads((out / "netlist.json").read_text())
 cmos = (out / "stat_cmos.txt").read_text()
@@ -29,7 +29,7 @@ def base(name):
 nets = {base(k): v for k, v in net["modules"].items()}
 stats = {base(k): v for k, v in stat["modules"].items()}
 
-# declared registers per module: names from rtl/<module>.v (function locals excluded),
+# declared registers per module: names from src/<module>.v (function locals excluded),
 # widths from the netlist, which keeps every named register at its declared width
 DECL = re.compile(r"\b(?:output\s+)?reg\b(?:\s+signed)?(?:\s*\[[^\]]+\])?\s+"
                   r"([A-Za-z_]\w*(?:[ \t]*,[ \t]*[A-Za-z_]\w*)*)")   # names on one line only

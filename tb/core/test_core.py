@@ -1,4 +1,4 @@
-"""End-to-end bit-exact check of rtl/ab_core.v: ADC codes in, decision events out.
+"""End-to-end bit-exact check of src/ab_core.v: ADC codes in, decision events out.
 
 The DUT gets each sample's ADC code (column adu of <stream>_samples.npy); every peak and
 beat event must equal the golden tables (ab_tb.EventChecker, docs/golden_vectors.md).
@@ -64,7 +64,7 @@ async def full_records(dut):
     counts = {Path(s).name: await check_stream(dut, s) for s in found}
     if not subset:
         write_report("rtl_core.md", "complete RTL detector against the golden vectors",
-                     "`rtl/ab_core.v` (filter chain + decision logic) fed with the ADC code of "
+                     "`src/ab_core.v` (filter chain + decision logic) fed with the ADC code of "
                      "every sample. Every peak event (class, value, age, SPKI, NPKI, THR1) and every "
                      "beat event (R-peak age, kind, SPKI, NPKI, THR1, RR limit) equals the integer "
                      "model's log, end to end.",

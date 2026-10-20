@@ -1,11 +1,11 @@
-# End-to-end bit-exact testbench of rtl/ab_core.v (filters + decision logic).
+# End-to-end bit-exact testbench of src/ab_core.v (filters + decision logic).
 #   make                 smoke set (tb/vectors)
 #   make AB_FULL=1       also all 48 records in data/golden (AB_RECORDS=100,228 for a subset)
 #   make full-parallel   all 48 records over AB_JOBS=6 simulators (tb/common/full_parallel.mk)
 # From Windows: scripts\wsl_make.ps1 tb\core [AB_FULL=1 | full-parallel]
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
-RTL = $(CURDIR)/../../rtl
+RTL = $(CURDIR)/../../src
 VERILOG_SOURCES = $(RTL)/ab_filters.v $(RTL)/ab_decide.v $(RTL)/ab_core.v
 COCOTB_TOPLEVEL = ab_core
 COCOTB_TEST_MODULES = test_core

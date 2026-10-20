@@ -1,4 +1,4 @@
-"""Bit-exact check of rtl/ab_decide.v against the integer model's decision log.
+"""Bit-exact check of src/ab_decide.v against the integer model's decision log.
 
 The DUT gets each sample's mwi, sq and hp from <stream>_samples.npy; every peak and beat
 event must equal the golden tables (ab_tb.EventChecker, docs/golden_vectors.md).
@@ -67,7 +67,7 @@ async def full_records(dut):
     counts = {Path(s).name: await check_stream(dut, s) for s in found}
     if not subset:
         write_report("rtl_decide.md", "RTL decision logic against the golden vectors",
-                     "`rtl/ab_decide.v` fed with the golden `mwi`, `sq` and `hp` of every sample. "
+                     "`src/ab_decide.v` fed with the golden `mwi`, `sq` and `hp` of every sample. "
                      "Every peak event (class, value, age, SPKI, NPKI, THR1) and every beat event "
                      "(R-peak age, kind, SPKI, NPKI, THR1, RR limit) equals the integer model's log.",
                      counts)

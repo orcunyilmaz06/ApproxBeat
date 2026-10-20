@@ -58,7 +58,7 @@ see `manifest.json`.
 | `n`, `age` | sample at which the peak was confirmed and classified, and its age then |
 | `spk`, `npk`, `thr1` | levels after the classification |
 
-## Filter chain: `rtl/ab_filters.v`
+## Filter chain: `src/ab_filters.v`
 
 The first RTL block. Its ports are `clk`, `rst_n`, `in_valid`, `in_adu[10:0]`, plus the
 registered stage outputs `lp`, `hp`, `sq` and `mwi` of the last sample. It takes one
@@ -70,7 +70,7 @@ values. `tb/filters` compares those wires with columns 1-5 of `samples` on every
     scripts\wsl_make.ps1 tb\filters AB_FULL=1   also all 48 records, ~25 min;
                                                 writes results/rtl_filters.md
 
-## Decision logic: `rtl/ab_decide.v`
+## Decision logic: `src/ab_decide.v`
 
 Ports: `clk`, `rst_n`, `in_valid`, `mwi[SQ_BITS+4:0]`, `sq[SQ_BITS-1:0]` and `hp[12:0]`
 (signed) in, and `done`, `peak_valid`, `peak_class[1:0]`, `beat_valid`, `beat_kind` and
@@ -96,7 +96,7 @@ classification. `beat_valid` and `done` pulse in the
 cycle after BOOK. `tb/decide` feeds the golden `mwi`, `sq` and `hp` and compares every
 peak and beat event.
 
-## Core: `rtl/ab_core.v`
+## Core: `src/ab_core.v`
 
 `ab_filters` and `ab_decide` together: `in_adu` in, the events of `ab_decide` out, one
 sample per `done` (4 to 13 clock cycles). `tb/core` checks it end to end, from the ADC codes:

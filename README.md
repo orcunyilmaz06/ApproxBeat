@@ -19,7 +19,7 @@ Tapeout chip.
 | Robust searchback (record 228 tipping point) | done; chosen on DS1, confirmed on held-out DS2 |
 | Golden vectors for the RTL: format, full set, committed smoke set | done ([docs/golden_vectors.md](docs/golden_vectors.md)) |
 | RTL filter chain (Verilog) with cocotb regression | done; bit-exact on all 48 records, 17,342,976 samples ([results/rtl_filters.md](results/rtl_filters.md)) |
-| RTL decision logic and core (`rtl/ab_core.v`) | done; end to end from ADC codes, all 48 records: 276,457 peak and 109,794 beat events bit-exact ([results/rtl_core.md](results/rtl_core.md)) |
+| RTL decision logic and core (`src/ab_core.v`) | done; end to end from ADC codes, all 48 records: 276,457 peak and 109,794 beat events bit-exact ([results/rtl_core.md](results/rtl_core.md)) |
 | Generic Yosys synthesis | done; flip-flops reconciled with the register inventory ([results/synth_core.md](results/synth_core.md)) |
 | Area step 1: one shared adder in the decision logic, no input latch | done; 1,489 flip-flops and 5,401 logic cells, down from 1,516 and 7,057 (D17) |
 | Area step 2: classify the peak straight from the peak detector | done; 1,435 flip-flops and 5,441 logic cells (D18) |
@@ -60,7 +60,7 @@ by rounding. Source: [results/int_study.md](results/int_study.md).
 | Model | Se (%) | +P (%) | DER (%) | Flip-flops |
 |---|---:|---:|---:|---:|
 | float (`ab_pt_float`) | 99.68 | 99.78 | 0.540 | |
-| integer (`ab_pt_int`), as built in `rtl/ab_core.v` | 99.68 | 99.78 | 0.544 | 1,463 |
+| integer (`ab_pt_int`), as built in `src/ab_core.v` | 99.68 | 99.78 | 0.544 | 1,463 |
 
 What it took to get there, and what it showed:
 
@@ -131,7 +131,7 @@ matlab/
            ab_pt_float / ab_pt_int, ab_int_widths (word lengths), ab_state_inventory
   eval/    beat matching, scoring (ab_run_eval), studies, golden vectors, plots
   tests/   unit tests, run by ab_test
-rtl/       Verilog: ab_filters.v (filter chain), ab_decide.v (decision logic), ab_core.v
+src/       Verilog: ab_filters.v (filter chain), ab_decide.v (decision logic), ab_core.v
 tb/filters/, tb/decide/, tb/core/  cocotb testbenches, bit-exact against the golden vectors
 tb/common/   event checker shared by the testbenches
 flow/synth/  generic Yosys synthesis; report.py reconciles flip-flops with the inventory

@@ -16,8 +16,8 @@ Shuttle dates were checked against <https://tinytapeout.com/runs> on 2026-10-19.
   - WSL2 toolchain, done: Ubuntu 24.04, Icarus Verilog 12, cocotb 2.1, with an
     end-to-end self-test (`scripts/setup_wsl.sh`, `scripts/wsl_make.ps1`).
 - **Weeks 3-4, done early (2026-10-20).** The complete RTL detector is bit-exact on all 48
-  records, end to end from the ADC codes. That covers the filter chain (`rtl/ab_filters.v`)
-  and the decision logic (`rtl/ab_decide.v`), joined in `rtl/ab_core.v`, with results in
+  records, end to end from the ADC codes. That covers the filter chain (`src/ab_filters.v`)
+  and the decision logic (`src/ab_decide.v`), joined in `src/ab_core.v`, with results in
   `results/rtl_filters.md` and `results/rtl_core.md`.
 - **Generic synthesis, done (2026-10-20).** 1,516 flip-flops and 7,057 logic cells; the
   flip-flops reconcile with the inventory to within 1.7 % (`results/synth_core.md`, D16).

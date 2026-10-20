@@ -1,8 +1,8 @@
-# Generic Yosys synthesis of rtl/ab_core.v: flip-flop, cell and transistor counts before
+# Generic Yosys synthesis of src/ab_core.v: flip-flop, cell and transistor counts before
 # any PDK (the LibreLane runs come later). Writes results/synth_core.md.
 #   make                 synthesize and report
 # From Windows: scripts\wsl_make.ps1 flow\synth
-RTL  = $(CURDIR)/../../rtl
+RTL  = $(CURDIR)/../../src
 SRC  = $(RTL)/ab_filters.v $(RTL)/ab_decide.v $(RTL)/ab_core.v
 OUT ?= $(HOME)/.cache/approxbeat/synth
 YOSYS_CMDS = read_verilog $(SRC); hierarchy -check -top ab_core; synth -top ab_core; \

@@ -70,6 +70,8 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
   `tb\core` runs the smoke set (a few seconds each). Run all three after every RTL change.
   Adding `AB_FULL=1` covers all 48 records: filters ~25 min and core ~55 min, writing
   `results/rtl_filters.md` and `results/rtl_core.md`. `AB_RECORDS=203,228` gives a subset.
+  For `tb\core` and `tb\decide`, the target `full-parallel` runs the 48 records on
+  `AB_JOBS=6` simulators at once and writes the same report (`tb/common/full_parallel.mk`).
   The event checker the testbenches share is in `tb/common/ab_tb.py`.
 - Generic synthesis (Yosys in WSL, ~10 s, writes `results/synth_core.md`, which reconciles
   the flip-flops with the declared registers): `scripts\wsl_make.ps1 flow\synth`.

@@ -100,6 +100,8 @@ sample per `done` (4 to 14 clock cycles). `tb/core` checks it end to end, from t
     scripts\wsl_make.ps1 tb\core                smoke set, ~4 s
     scripts\wsl_make.ps1 tb\core AB_FULL=1      also all 48 records, ~55 min;
                                                 writes results/rtl_core.md
+    scripts\wsl_make.ps1 tb\core full-parallel  the same 48 records on 6 simulators
+                                                at once (AB_JOBS=6), same report
 
 ## What the RTL must reproduce
 

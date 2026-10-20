@@ -270,5 +270,8 @@ RTL did not change, gave 2,622, 2,604 and 2,611 logic cells in the three rows: i
 count moves by about 1 % when `ab_decide` changes. Logic differences below that are
 noise. Flip-flop counts are exact.
 
-**Verified.** `ab_decide` is bit-exact on the smoke vectors and on records 203 and 228,
-and so is the core on its smoke vectors.
+**Verified.** `ab_decide` is bit-exact on the smoke vectors and on records 203 and 228.
+The core is bit-exact end to end on all 48 records: 276,457 peak and 109,794 beat
+events, the same table as before the area step (`results/rtl_core.md`). That run used
+the new `full-parallel` target, which splits the 48 records over 6 simulators and takes
+13 minutes instead of about 55.

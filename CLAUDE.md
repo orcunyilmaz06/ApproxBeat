@@ -101,7 +101,9 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
   Windows side. Build output goes to `~/.cache/approxbeat` inside Linux, never into the
   OneDrive folder. `.gitattributes` keeps LF line endings for the files Linux tools read
   (`*.sh`, `*.py`, `*.v`, `Makefile`).
-- LibreLane (via Nix) is not installed yet.
+- LibreLane (via Nix) is not installed locally. On GitHub, `.github/workflows` runs the
+  Tiny Tapeout actions of the TTGF26c template on every push: `gds` (LibreLane on
+  GF180, precheck, gate-level test, viewer), `test` and `docs`. `fpga` runs only by hand.
 
 ## Conventions
 

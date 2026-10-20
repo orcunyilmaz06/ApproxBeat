@@ -1,0 +1,52 @@
+# Tiny Tapeout: the RTL test in test/ (smoke vectors through the chip pins)
+name: test
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install Icarus Verilog
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install -y iverilog
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install Python packages
+        shell: bash
+        run: pip install -r test/requirements.txt
+
+      - name: Run tests
+        run: |
+          cd test
+          make clean
+          make
+          # make succeeds even when a test fails; results.xml says whether it passed
+          python -m cocotb_tools.check_results results.xml
+
+      - name: Test summary
+        uses: test-summary/action@v2.4
+        with:
+          paths: "test/results.xml"
+        if: always()
+
+      - name: Upload results
+        if: success() || failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: |
+            test/tb.fst
+            test/results.xml
+            test/output/*

@@ -1,0 +1,18 @@
+# Tiny Tapeout: an iCE40UP5K bitstream of the design, for trying it on an FPGA board.
+# Manual only: the detector may not fit the 5,280 LUTs of the UP5K.
+name: fpga
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fpga:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: FPGA bitstream for TT ASIC Sim (ICE40UP5K)
+        uses: TinyTapeout/tt-gds-action/fpga/ice40up5k@ttgf26c

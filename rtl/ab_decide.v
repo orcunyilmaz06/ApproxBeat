@@ -1,15 +1,18 @@
 // ApproxBeat: Pan-Tompkins decision logic (peak detector, adaptive thresholds, searchback).
 //
 // Bit-exact to matlab/model/ab_pt_decide.m in integer mode with the baseline parameters
-// (docs/algorithm.md). One sample per in_valid; the sample is processed in four phases,
-// in the model's order:
-//   PEAK    age counters, MWI peak detector, segment maxima of sq and |hp|
-//   CLASS   startup (blanking, learning, initial levels) or classification of a peak
-//   SEARCH  searchback
-//   BOOK    QRS bookkeeping: RR average, last QRS, beat output
-// peak_valid pulses in the cycle after CLASS, while the levels hold their values after the
-// classification; beat_valid and done pulse in the cycle after BOOK. Event positions are
-// age counters (samples since the event) that saturate at 2047.
+// (docs/algorithm.md). One sample per in_valid, processed in the model's order:
+//   PEAK            age counters, MWI peak detector, segment maxima of sq and |hp|
+//   LRN, INIT       startup: learning window, then the initial levels
+//   CLS ... NU      classification of a confirmed peak and its level update
+//   TD, TU          threshold update THR1 = NPKI + (SPKI - NPKI) >>> 2
+//   SEARCH, SD, SU  searchback
+//   BOOK            QRS bookkeeping: RR average, last QRS, beat output
+// Every sum is computed by one shared 23-bit adder/subtractor, one operation per cycle
+// (D17); comparisons keep their own comparators. A sample takes 4 to 14 cycles.
+// peak_valid pulses once the levels hold their values after the classification;
+// beat_valid and done pulse in the cycle after BOOK. Event positions are age counters
+// (samples since the event) that saturate at 2047.
 `default_nettype none
 `timescale 1ns / 1ps
 
@@ -36,8 +39,11 @@ module ab_decide (
     localparam [13:0] RR_ACC0    = 14'd1600;  // 8 x rr_init (200 samples)
     localparam [11:0] RR_LIM0    = 12'd331;   // 200 + 100 + 25 + 6
 
-    localparam [2:0] S_IDLE = 3'd0, S_PEAK = 3'd1, S_CLASS = 3'd2, S_SEARCH = 3'd3, S_BOOK = 3'd4;
-    reg [2:0] state;
+    localparam [3:0] S_IDLE = 4'd0,  S_PEAK = 4'd1,  S_LRN = 4'd2,     S_INIT = 4'd3,
+                     S_CLS  = 4'd4,  S_CLIP = 4'd5,  S_LD = 4'd6,      S_LU = 4'd7,
+                     S_ND   = 4'd8,  S_NU   = 4'd9,  S_TD = 4'd10,     S_TU = 4'd11,
+                     S_SEARCH = 4'd12, S_SD = 4'd13, S_SU = 4'd14,     S_BOOK = 4'd15;
+    (* fsm_encoding = "binary" *) reg [3:0] state;
 
     // the sample being processed
     reg [20:0] mwi_r;
@@ -52,8 +58,7 @@ module ab_decide (
     reg [15:0] seg_sq;                        // largest sq since the previous peak (slope)
     reg [11:0] seg_hp;                        // largest |hp| since the previous peak
     reg [10:0] seg_hp_age;
-    reg        is_pk;                         // a peak was confirmed on this sample
-    reg [20:0] c_val;
+    reg [20:0] c_val;                         // the peak being classified
     reg [5:0]  c_age;
     reg [15:0] c_slope;
     reg [10:0] c_r_age;
@@ -76,27 +81,16 @@ module ab_decide (
     reg [15:0] sb_slope;
     reg [10:0] sb_r_age;
     reg [1:0]  found;                         // 0 none, 1 threshold, 2 searchback
+    reg        in_sb;                         // the threshold update belongs to a searchback
 
-    // level + floor((x - level) / 2^k) for 21-bit unsigned level and x. Done in a signed
-    // local so that >>> stays arithmetic; the true result fits in 21 bits.
-    function [20:0] ema;
-        input [20:0] level;
-        input [20:0] x;
-        input [1:0]  k;
-        reg signed [22:0] d;
-        begin
-            d   = $signed({2'b00, x}) - $signed({2'b00, level});
-            d   = d >>> k;
-            ema = level + d[20:0];
-        end
-    endfunction
+    reg signed [22:0] t;                      // result of the shared adder kept for the next step
 
     function [10:0] inc11;                    // saturating age counter
         input [10:0] a;
         inc11 = (a == 11'd2047) ? a : a + 11'd1;
     endfunction
 
-    // ---- PEAK phase ------------------------------------------------------------------
+    // ---- PEAK: peak detector (comparators) ---------------------------------------------
     wire [5:0]  pk_age_a     = (pk_age == 6'd63) ? pk_age : pk_age + 6'd1;
     wire [10:0] seg_hp_age_a = inc11(seg_hp_age);
     wire        up           = mwi_r > pk_max;
@@ -104,35 +98,50 @@ module ab_decide (
     wire [15:0] seg_sq_base  = confirm ? 16'd0 : seg_sq;
     wire [11:0] seg_hp_base  = confirm ? 12'd0 : seg_hp;
 
-    // ---- CLASS phase -----------------------------------------------------------------
-    wire [20:0] lmax_n   = (mwi_r > learn_max) ? mwi_r : learn_max;
-    wire [20:0] lsum_n   = learn_sum + {8'd0, mwi_r[20:8]};
-    wire [20:0] spk_init = {2'b00, lmax_n[20:2]} + {4'b0000, lmax_n[20:4]};
-    wire [20:0] npk_init = {1'b0, lsum_n[20:1]};
-
+    // ---- CLS: classification (comparators) ---------------------------------------------
     wire signed [11:0] dt   = $signed({1'b0, qrs_age}) - $signed({6'd0, c_age});
     wire        refr_ok     = !have_qrs || (dt > REFRACTORY);
     wire        twave       = have_qrs && (dt < TWAVE_WIN) && (c_slope < (last_slope >> 2));
     wire        is_qrs      = (c_val > thr1) && !twave;
-    wire [21:0] clip        = {1'b0, spk} + {3'b000, spk[20:2]};      // 1.25 x SPKI
-    wire [20:0] pk_in       = ({1'b0, c_val} < clip) ? c_val : clip[20:0];
-    wire [20:0] spk_c       = is_qrs ? ema(spk, pk_in, 2'd3) : spk;
-    wire [20:0] npk_c       = is_qrs ? npk : ema(npk, c_val, 2'd3);
-    wire        take_cand   = !is_qrs && !twave && (c_val > (thr1 >> 1)) && (!sb_valid || (c_val > sb_val));
-
-    // ---- SEARCH phase ----------------------------------------------------------------
+    wire        take_cand   = !twave && (c_val > (thr1 >> 1)) && (!sb_valid || (c_val > sb_val));
+    wire [21:0] pk_in       = ({1'b0, c_val} < t[21:0]) ? {1'b0, c_val} : t[21:0];  // min(peak, clip)
     wire        sb_fire     = (found == 2'd0) && sb_valid && ({1'b0, qrs_age} > rr_lim);
-    wire [20:0] spk_s       = ema(spk, sb_val, 2'd2);
 
-    // ---- BOOK phase ------------------------------------------------------------------
-    wire [10:0] f_age       = (found == 2'd1) ? {5'd0, c_age} : sb_age;
-    wire [15:0] f_slope     = (found == 2'd1) ? c_slope : sb_slope;
-    wire [10:0] f_r_age     = (found == 2'd1) ? c_r_age : sb_r_age;
-    wire [10:0] rr          = qrs_age - f_age;
-    wire [14:0] rr_acc_n    = {1'b0, rr_acc} + {4'd0, rr} - {4'd0, rr_acc[13:3]};
-    wire [10:0] rr_avg      = rr_acc_n[13:3];
-    wire [11:0] rr_lim_n    = {1'b0, rr_avg} + {2'b00, rr_avg[10:1]} + {4'd0, rr_avg[10:3]}
-                            + {6'd0, rr_avg[10:5]};
+    // ---- the shared adder/subtractor: alu_r = alu_a +/- alu_b -------------------------
+    wire signed [22:0] t_s2 = t >>> 2;
+    wire signed [22:0] t_s3 = t >>> 3;
+    reg  [22:0] alu_a, alu_b;
+    reg         alu_sub;
+    always @* begin
+        alu_a = 23'd0; alu_b = 23'd0; alu_sub = 1'b0;
+        case (state)
+        S_LRN:  begin alu_a = {2'b00, learn_sum};          alu_b = {10'd0, mwi_r[20:8]};     end
+        S_INIT: begin alu_a = {4'd0, learn_max[20:2]};     alu_b = {6'd0, learn_max[20:4]};  end
+        S_CLIP: begin alu_a = {2'b00, spk};                alu_b = {4'd0, spk[20:2]};        end
+        S_LD:   begin alu_a = {1'b0, pk_in};               alu_b = {2'b00, spk};  alu_sub = 1'b1; end
+        S_LU:   begin alu_a = {2'b00, spk};                alu_b = t_s3;                     end
+        S_ND:   begin alu_a = {2'b00, c_val};              alu_b = {2'b00, npk};  alu_sub = 1'b1; end
+        S_NU:   begin alu_a = {2'b00, npk};                alu_b = t_s3;                     end
+        S_TD:   begin alu_a = {2'b00, spk};                alu_b = {2'b00, npk};  alu_sub = 1'b1; end
+        S_TU:   begin alu_a = {2'b00, npk};                alu_b = t_s2;                     end
+        S_SD:   begin alu_a = {2'b00, sb_val};             alu_b = {2'b00, spk};  alu_sub = 1'b1; end
+        S_SU:   begin alu_a = {2'b00, spk};                alu_b = t_s2;                     end
+        default: ;
+        endcase
+    end
+    // one adder with carry-in: a + (b ^ sub) + sub, written so that only one adder is built
+    wire [23:0] alu_sum = {alu_a, 1'b1} + {alu_b ^ {23{alu_sub}}, alu_sub};
+    wire [22:0] alu_r   = alu_sum[23:1];
+
+    // ---- BOOK: RR average (narrow, own adders) -----------------------------------------
+    wire [10:0] f_age    = (found == 2'd1) ? {5'd0, c_age} : sb_age;
+    wire [15:0] f_slope  = (found == 2'd1) ? c_slope : sb_slope;
+    wire [10:0] f_r_age  = (found == 2'd1) ? c_r_age : sb_r_age;
+    wire [10:0] rr       = qrs_age - f_age;
+    wire [14:0] rr_acc_n = {1'b0, rr_acc} + {4'd0, rr} - {4'd0, rr_acc[13:3]};
+    wire [10:0] rr_avg   = rr_acc_n[13:3];
+    wire [11:0] rr_lim_n = {1'b0, rr_avg} + {2'b00, rr_avg[10:1]} + {4'd0, rr_avg[10:3]}
+                         + {6'd0, rr_avg[10:5]};
 
     always @(posedge clk) begin
         peak_valid <= 1'b0;
@@ -143,12 +152,12 @@ module ab_decide (
             mwi_r <= 0; sq_r <= 0; ahp_r <= 0; idx <= 0;
             rising <= 1'b0; pk_max <= 0; pk_age <= 0;
             seg_sq <= 0; seg_hp <= 0; seg_hp_age <= 0;
-            is_pk <= 1'b0; c_val <= 0; c_age <= 0; c_slope <= 0; c_r_age <= 0;
+            c_val <= 0; c_age <= 0; c_slope <= 0; c_r_age <= 0;
             spk <= 0; npk <= 0; thr1 <= 0; learn_max <= 0; learn_sum <= 0;
             have_qrs <= 1'b0; qrs_age <= 0; last_slope <= 0;
             rr_acc <= RR_ACC0; rr_lim <= RR_LIM0;
             sb_valid <= 1'b0; sb_val <= 0; sb_age <= 0; sb_slope <= 0; sb_r_age <= 0;
-            found <= 2'd0;
+            found <= 2'd0; in_sb <= 1'b0; t <= 0;
             peak_class <= 2'd0; beat_kind <= 1'b0; beat_r_age <= 0;
         end else begin
             case (state)
@@ -163,7 +172,6 @@ module ab_decide (
                 qrs_age  <= inc11(qrs_age);
                 sb_age   <= inc11(sb_age);
                 sb_r_age <= inc11(sb_r_age);
-                is_pk    <= confirm;
                 if (rising) begin
                     if (up) begin
                         pk_max <= mwi_r; pk_age <= 6'd0;
@@ -184,48 +192,72 @@ module ab_decide (
                 end else begin
                     seg_hp <= seg_hp_base; seg_hp_age <= seg_hp_age_a;
                 end
-                state <= S_CLASS;
+                if (idx < BLANK)          state <= S_BOOK;     // filters settling
+                else if (idx < LEARN_END) state <= S_LRN;
+                else if (confirm)         state <= S_CLS;
+                else                      state <= S_SEARCH;
             end
 
-            S_CLASS: begin
-                if (idx < BLANK) begin
-                    // filters settling: nothing to do
-                end else if (idx < LEARN_END) begin
-                    learn_max <= lmax_n;
-                    learn_sum <= lsum_n;
-                    if (idx == LEARN_END - 9'd1) begin
-                        spk     <= spk_init;
-                        npk     <= npk_init;
-                        thr1    <= ema(npk_init, spk_init, 2'd2);
-                        qrs_age <= 11'd0;              // the searchback timer starts here
-                    end
-                end else if (is_pk) begin
+            // learning window, then the initial levels
+            S_LRN: begin
+                if (mwi_r > learn_max) learn_max <= mwi_r;
+                learn_sum <= alu_r[20:0];
+                state <= (idx == LEARN_END - 9'd1) ? S_INIT : S_BOOK;
+            end
+            S_INIT: begin
+                spk     <= alu_r[20:0];
+                npk     <= {1'b0, learn_sum[20:1]};
+                qrs_age <= 11'd0;                       // the searchback timer starts here
+                state   <= S_TD;
+            end
+
+            // classification of the confirmed peak
+            S_CLS: begin
+                if (!refr_ok) begin
+                    peak_class <= 2'd0;
                     peak_valid <= 1'b1;
-                    if (!refr_ok) begin
-                        peak_class <= 2'd0;
-                    end else begin
-                        peak_class <= is_qrs ? 2'd1 : (twave ? 2'd3 : 2'd2);
-                        spk  <= spk_c;
-                        npk  <= npk_c;
-                        thr1 <= ema(npk_c, spk_c, 2'd2);
-                        if (is_qrs) found <= 2'd1;
-                        if (take_cand) begin
-                            sb_valid <= 1'b1; sb_val <= c_val; sb_age <= {5'd0, c_age};
-                            sb_slope <= c_slope; sb_r_age <= c_r_age;
-                        end
+                    state <= S_SEARCH;
+                end else if (is_qrs) begin
+                    peak_class <= 2'd1;
+                    found <= 2'd1;
+                    state <= S_CLIP;
+                end else begin
+                    peak_class <= twave ? 2'd3 : 2'd2;
+                    if (take_cand) begin
+                        sb_valid <= 1'b1; sb_val <= c_val; sb_age <= {5'd0, c_age};
+                        sb_slope <= c_slope; sb_r_age <= c_r_age;
                     end
+                    state <= S_ND;
                 end
-                state <= S_SEARCH;
+            end
+            S_CLIP: begin t <= alu_r; state <= S_LD; end                // clip = 1.25 SPKI
+            S_LD:   begin t <= alu_r; state <= S_LU; end                // min(peak, clip) - SPKI
+            S_LU:   begin spk <= alu_r[20:0]; state <= S_TD; end
+            S_ND:   begin t <= alu_r; state <= S_NU; end                // peak - NPKI
+            S_NU:   begin npk <= alu_r[20:0]; state <= S_TD; end
+
+            // THR1 = NPKI + (SPKI - NPKI) >>> 2
+            S_TD: begin t <= alu_r; state <= S_TU; end
+            S_TU: begin
+                thr1 <= alu_r[20:0];
+                if (idx < LEARN_END || in_sb) begin
+                    state <= S_BOOK;                            // initial levels, or after searchback
+                end else begin
+                    peak_valid <= 1'b1;                         // after a classification
+                    state <= S_SEARCH;
+                end
             end
 
+            // searchback
             S_SEARCH: begin
-                if (idx >= LEARN_END && sb_fire) begin
-                    spk   <= spk_s;
-                    thr1  <= ema(npk, spk_s, 2'd2);
-                    found <= 2'd2;
+                if (sb_fire) begin
+                    found <= 2'd2; in_sb <= 1'b1; state <= S_SD;
+                end else begin
+                    state <= S_BOOK;
                 end
-                state <= S_BOOK;
             end
+            S_SD: begin t <= alu_r; state <= S_SU; end                  // candidate - SPKI
+            S_SU: begin spk <= alu_r[20:0]; state <= S_TD; end
 
             S_BOOK: begin
                 if (found != 2'd0) begin
@@ -242,6 +274,7 @@ module ab_decide (
                     beat_r_age <= f_r_age;
                 end
                 found <= 2'd0;
+                in_sb <= 1'b0;
                 idx   <= (idx == LEARN_END) ? idx : idx + 9'd1;
                 done  <= 1'b1;
                 state <= S_IDLE;

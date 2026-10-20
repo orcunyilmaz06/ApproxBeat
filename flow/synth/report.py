@@ -30,7 +30,9 @@ for m in modules:
     for msb, names in DECL.findall(text):
         width = eval(msb, {"__builtins__": {}}) + 1 if msb else 1
         for name in re.split(r"\s*,\s*", names.strip()):
-            regs[name] = width
+            # registers get non-blocking assignments; regs of always @* blocks do not
+            if re.search(rf"\b{name}\s*(\[[^\]]*\])?\s*<=", text):
+                regs[name] = width
     declared[m] = regs
 
 # transistor estimates of `stat -tech cmos`

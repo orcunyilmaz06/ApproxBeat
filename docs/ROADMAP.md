@@ -21,8 +21,10 @@ Shuttle dates were checked against <https://tinytapeout.com/runs> on 2026-10-19.
   `results/rtl_filters.md` and `results/rtl_core.md`.
 - **Generic synthesis, done (2026-10-20).** 1,516 flip-flops and 7,057 logic cells; the
   flip-flops reconcile with the inventory to within 1.7 % (`results/synth_core.md`, D16).
+- **Area step 1, done (2026-10-20).** One shared adder in the decision logic and no input
+  latch: 1,489 flip-flops and 5,401 logic cells, down from 1,516 and 7,057 (D17).
   Next:
-  - Area closure: share the adders of the decision logic (D15, D16).
+  - More area: merge PEAK into CLS, then the word lengths of D13.
   - The Tiny Tapeout wrapper and its I/O protocol.
   - A GitHub repository for the TT GitHub Action.
   - LibreLane for real area.

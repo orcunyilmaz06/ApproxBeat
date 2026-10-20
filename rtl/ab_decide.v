@@ -19,9 +19,9 @@
 module ab_decide (
     input  wire               clk,
     input  wire               rst_n,        // synchronous, active low
-    input  wire               in_valid,     // mwi, sq, hp hold a new sample this cycle
-    input  wire        [20:0] mwi,
-    input  wire        [15:0] sq,
+    input  wire               in_valid,     // mwi, sq, hp hold a new sample this cycle;
+    input  wire        [20:0] mwi,          // they must stay stable until done (the filter
+    input  wire        [15:0] sq,           // outputs do: the next sample comes after done)
     input  wire signed [12:0] hp,
     output reg                done,         // pulse: the sample has been processed
     output reg                peak_valid,   // pulse: an MWI peak was classified on this sample
@@ -45,11 +45,9 @@ module ab_decide (
                      S_SEARCH = 4'd12, S_SD = 4'd13, S_SU = 4'd14,     S_BOOK = 4'd15;
     (* fsm_encoding = "binary" *) reg [3:0] state;
 
-    // the sample being processed
-    reg [20:0] mwi_r;
-    reg [15:0] sq_r;
-    reg [11:0] ahp_r;                         // |hp| <= 2302
-    reg [8:0]  idx;                           // its 0-based index, saturating at 384
+    // the sample being processed: read straight from the inputs, no latch (D17)
+    wire [11:0] ahp = hp[12] ? -hp[11:0] : hp[11:0];   // |hp| <= 2302
+    reg  [8:0]  idx;                          // its 0-based index, saturating at 384
 
     // peak detector
     reg        rising;
@@ -93,8 +91,8 @@ module ab_decide (
     // ---- PEAK: peak detector (comparators) ---------------------------------------------
     wire [5:0]  pk_age_a     = (pk_age == 6'd63) ? pk_age : pk_age + 6'd1;
     wire [10:0] seg_hp_age_a = inc11(seg_hp_age);
-    wire        up           = mwi_r > pk_max;
-    wire        confirm      = rising && !up && ((mwi_r < (pk_max >> 1)) || (pk_age_a >= PK_TIMEOUT));
+    wire        up           = mwi > pk_max;
+    wire        confirm      = rising && !up && ((mwi < (pk_max >> 1)) || (pk_age_a >= PK_TIMEOUT));
     wire [15:0] seg_sq_base  = confirm ? 16'd0 : seg_sq;
     wire [11:0] seg_hp_base  = confirm ? 12'd0 : seg_hp;
 
@@ -115,7 +113,7 @@ module ab_decide (
     always @* begin
         alu_a = 23'd0; alu_b = 23'd0; alu_sub = 1'b0;
         case (state)
-        S_LRN:  begin alu_a = {2'b00, learn_sum};          alu_b = {10'd0, mwi_r[20:8]};     end
+        S_LRN:  begin alu_a = {2'b00, learn_sum};          alu_b = {10'd0, mwi[20:8]};       end
         S_INIT: begin alu_a = {4'd0, learn_max[20:2]};     alu_b = {6'd0, learn_max[20:4]};  end
         S_CLIP: begin alu_a = {2'b00, spk};                alu_b = {4'd0, spk[20:2]};        end
         S_LD:   begin alu_a = {1'b0, pk_in};               alu_b = {2'b00, spk};  alu_sub = 1'b1; end
@@ -149,7 +147,7 @@ module ab_decide (
         done       <= 1'b0;
         if (!rst_n) begin
             state <= S_IDLE;
-            mwi_r <= 0; sq_r <= 0; ahp_r <= 0; idx <= 0;
+            idx <= 0;
             rising <= 1'b0; pk_max <= 0; pk_age <= 0;
             seg_sq <= 0; seg_hp <= 0; seg_hp_age <= 0;
             c_val <= 0; c_age <= 0; c_slope <= 0; c_r_age <= 0;
@@ -161,12 +159,7 @@ module ab_decide (
             peak_class <= 2'd0; beat_kind <= 1'b0; beat_r_age <= 0;
         end else begin
             case (state)
-            S_IDLE: if (in_valid) begin
-                mwi_r <= mwi;
-                sq_r  <= sq;
-                ahp_r <= hp[12] ? -hp[11:0] : hp[11:0];
-                state <= S_PEAK;
-            end
+            S_IDLE: if (in_valid) state <= S_PEAK;
 
             S_PEAK: begin
                 qrs_age  <= inc11(qrs_age);
@@ -174,21 +167,21 @@ module ab_decide (
                 sb_r_age <= inc11(sb_r_age);
                 if (rising) begin
                     if (up) begin
-                        pk_max <= mwi_r; pk_age <= 6'd0;
+                        pk_max <= mwi; pk_age <= 6'd0;
                     end else if (confirm) begin
                         c_val <= pk_max; c_age <= pk_age_a; c_slope <= seg_sq; c_r_age <= seg_hp_age_a;
-                        rising <= 1'b0; pk_max <= mwi_r; pk_age <= pk_age_a;
+                        rising <= 1'b0; pk_max <= mwi; pk_age <= pk_age_a;
                     end else begin
                         pk_age <= pk_age_a;
                     end
                 end else if (up) begin
-                    rising <= 1'b1; pk_max <= mwi_r; pk_age <= 6'd0;
+                    rising <= 1'b1; pk_max <= mwi; pk_age <= 6'd0;
                 end else begin
-                    pk_max <= mwi_r; pk_age <= pk_age_a;
+                    pk_max <= mwi; pk_age <= pk_age_a;
                 end
-                seg_sq <= (sq_r > seg_sq_base) ? sq_r : seg_sq_base;
-                if (ahp_r > seg_hp_base) begin
-                    seg_hp <= ahp_r; seg_hp_age <= 11'd0;
+                seg_sq <= (sq > seg_sq_base) ? sq : seg_sq_base;
+                if (ahp > seg_hp_base) begin
+                    seg_hp <= ahp; seg_hp_age <= 11'd0;
                 end else begin
                     seg_hp <= seg_hp_base; seg_hp_age <= seg_hp_age_a;
                 end
@@ -200,7 +193,7 @@ module ab_decide (
 
             // learning window, then the initial levels
             S_LRN: begin
-                if (mwi_r > learn_max) learn_max <= mwi_r;
+                if (mwi > learn_max) learn_max <= mwi;
                 learn_sum <= alu_r[20:0];
                 state <= (idx == LEARN_END - 9'd1) ? S_INIT : S_BOOK;
             end

@@ -77,7 +77,9 @@ lines = [
     "logic-cell and transistor counts are technology-free estimates, not an area. The "
     "transistor estimate (`stat -tech cmos`) covers the logic gates and the plain "
     "flip-flops. Yosys' CMOS table has no entry for flip-flops with reset or enable, which "
-    "are almost all of them.",
+    "are almost all of them. The same RTL always gives the same counts, but the logic count of "
+    "an unchanged module moves by about 1 % when another module changes, so smaller "
+    "differences between designs are noise.",
     "",
     "| Module | Declared register bits | Flip-flops after synthesis | Logic cells | Transistors, logic (est.) |",
     "|---|---:|---:|---:|---:|",

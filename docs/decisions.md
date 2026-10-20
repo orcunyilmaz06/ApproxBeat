@@ -237,3 +237,38 @@ Area plan, with D15:
 - Drop the input latch.
 - Merge PEAK into CLASS.
 - Then measure on a real PDK with LibreLane.
+
+## 2026-10-20: D17. Area step 1: one shared adder, no input latch
+
+Measured by generic synthesis (`flow/synth`). The reports are at commits e320531 and
+cdd8653, and `results/synth_core.md` holds the last row.
+
+| RTL | `ab_decide` logic cells | `ab_decide` flip-flops | design logic cells | design flip-flops |
+|---|---:|---:|---:|---:|
+| four phases, own adders (e320531) | 4,434 | 419 | 7,057 | 1,516 |
+| one shared adder (cdd8653) | 2,795 | 441 | 5,400 | 1,538 |
+| plus no input latch | 2,789 | 392 | 5,401 | 1,489 |
+
+**Shared adder.** Every sum of the decision logic now runs through one 23-bit
+adder/subtractor: the level and threshold updates, the clip, the learning sum and the
+initial levels, in 11 states. A carry-in turns subtraction into the same addition, so
+only one adder is built. Each sum takes one cycle, so a sample takes 4 to 14 cycles
+instead of 6, still far inside the 5 ms between samples.
+Comparators keep their own logic, because they need no sum bits and sharing them would
+cost more in multiplexers than it saves. The decision logic shrinks by 37 % and gains a
+23-bit result register.
+
+**No input latch.** `mwi`, `sq` and `hp` stay stable from `in_valid` until `done`: in
+the core they are register outputs of `ab_filters`, and the next sample comes after
+`done`. Copying them is unnecessary, which saves 49 flip-flops. `ab_state_inventory`
+follows the RTL and now counts 1,517 flip-flops for the baseline instead of 1,542. The
+word-length grid of `results/int_study.md` shifts by the same amount; its accuracy
+figures are unchanged.
+
+**Noise.** The same RTL always synthesizes to the same counts. But `ab_filters`, whose
+RTL did not change, gave 2,622, 2,604 and 2,611 logic cells in the three rows: its logic
+count moves by about 1 % when `ab_decide` changes. Logic differences below that are
+noise. Flip-flop counts are exact.
+
+**Verified.** `ab_decide` is bit-exact on the smoke vectors and on records 203 and 228,
+and so is the core on its smoke vectors.

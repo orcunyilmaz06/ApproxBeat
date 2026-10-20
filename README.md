@@ -20,8 +20,9 @@ Tapeout chip.
 | Golden vectors for the RTL: format, full set, committed smoke set | done ([docs/golden_vectors.md](docs/golden_vectors.md)) |
 | RTL filter chain (Verilog) with cocotb regression | done; bit-exact on all 48 records, 17,342,976 samples ([results/rtl_filters.md](results/rtl_filters.md)) |
 | RTL decision logic and core (`rtl/ab_core.v`) | done; end to end from ADC codes, all 48 records: 276,457 peak and 109,794 beat events bit-exact ([results/rtl_core.md](results/rtl_core.md)) |
-| Generic Yosys synthesis | done; 1,516 flip-flops and 7,057 logic cells, reconciled with the register inventory ([results/synth_core.md](results/synth_core.md)) |
-| Area closure, Tiny Tapeout wrapper, LibreLane | next |
+| Generic Yosys synthesis | done; flip-flops reconciled with the register inventory ([results/synth_core.md](results/synth_core.md)) |
+| Area step 1: one shared adder in the decision logic, no input latch | done; 1,489 flip-flops and 5,401 logic cells, down from 1,516 and 7,057 (D17) |
+| Further area work, Tiny Tapeout wrapper, LibreLane | next |
 | LibreLane: IHP SG13G2 / GF180 | planned |
 | Tiny Tapeout | target TTGF26c, closes 2026-12-07 |
 
@@ -58,16 +59,17 @@ by rounding. Source: [results/int_study.md](results/int_study.md).
 | Model | Se (%) | +P (%) | DER (%) | Flip-flops |
 |---|---:|---:|---:|---:|
 | float (`ab_pt_float`) | 99.68 | 99.78 | 0.540 | |
-| integer (`ab_pt_int`), as built in `rtl/ab_core.v` | 99.68 | 99.78 | 0.544 | 1,542 |
+| integer (`ab_pt_int`), as built in `rtl/ab_core.v` | 99.68 | 99.78 | 0.544 | 1,517 |
 
 What it took to get there, and what it showed:
 
 - **Storage dominates the flip-flops, not the multiplier.** The four delay lines hold
-  68 % of the 1,542 flip-flops ([results/state_inventory.md](results/state_inventory.md)).
+  69 % of the 1,517 flip-flops ([results/state_inventory.md](results/state_inventory.md)).
   The squared derivative needs 22 bits in the worst case but only 16 bits on MIT-BIH.
-  Generic synthesis adds 7,057 logic cells, 4,434 of them in the decision logic, where
-  each phase still has its own adders. Those adders are the first target of the area
-  phase ([results/synth_core.md](results/synth_core.md), D16).
+  Generic synthesis first gave 7,057 logic cells, 4,434 of them in the decision logic,
+  where each phase had its own adders. One shared adder, used once per cycle, cut the
+  decision logic to 2,789 cells and the design to 5,401
+  ([results/synth_core.md](results/synth_core.md), D16, D17).
 - **A tipping point, found and removed.** At first, the integer model's accuracy depended
   on rounding details. Across six rounding variants the gross DER ranged from 0.572 % to
   0.747 %, and almost all of that came from one record. In 228 (bigeminy), large PVCs
@@ -79,7 +81,7 @@ What it took to get there, and what it showed:
   ([results/searchback_study.md](results/searchback_study.md), D14).
 - **A robust detector tolerates short words.** After the fix, the stored squared
   derivative fits in 8 bits instead of 22 (4 LSBs dropped, 4 MSBs clipped). DER is
-  0.542 % against 0.544 %, and the design needs 1,182 flip-flops instead of 1,542
+  0.542 % against 0.544 %, and the design needs 1,165 flip-flops instead of 1,517
   (-23 %). This is exploratory, over all 48 records, and still needs the DS1/DS2 check
   ([results/int_study.md](results/int_study.md) section 4b, D13).
 - **Rounding details stopped mattering.** All six rounding variants now give DER

@@ -19,12 +19,14 @@
 `default_nettype none
 `timescale 1ns / 1ps
 
-module ab_decide (
+module ab_decide #(
+    parameter SQ_BITS = 16                  // word length of sq; the MWI has SQ_BITS + 5 bits
+) (
     input  wire               clk,
     input  wire               rst_n,        // synchronous, active low
     input  wire               in_valid,     // mwi, sq, hp hold a new sample this cycle;
-    input  wire        [20:0] mwi,          // they must stay stable until done (the filter
-    input  wire        [15:0] sq,           // outputs do: the next sample comes after done)
+    input  wire [SQ_BITS+4:0] mwi,          // they must stay stable until done (the filter
+    input  wire [SQ_BITS-1:0] sq,           // outputs do: the next sample comes after done)
     input  wire signed [12:0] hp,
     output reg                done,         // pulse: the sample has been processed
     output reg                peak_valid,   // pulse: an MWI peak was classified on this sample
@@ -41,6 +43,8 @@ module ab_decide (
     localparam        TWAVE_WIN  = 72;
     localparam [13:0] RR_ACC0    = 14'd1600;  // 8 x rr_init (200 samples)
     localparam [11:0] RR_LIM0    = 12'd331;   // 200 + 100 + 25 + 6
+    localparam        MW         = SQ_BITS + 5;   // MWI and level word length
+    localparam        SW         = SQ_BITS;       // sq and slope word length
 
     localparam [3:0] S_IDLE = 4'd0,  S_PEAK = 4'd1,  S_LRN = 4'd2,     S_INIT = 4'd3,
                      S_CLIP = 4'd4,  S_LD   = 4'd5,  S_LU  = 4'd6,     S_ND   = 4'd7,
@@ -53,34 +57,34 @@ module ab_decide (
     reg  [8:0]  idx;                          // its 0-based index, saturating at 384
 
     // peak detector
-    reg        rising;
-    reg [20:0] pk_max;
-    reg [5:0]  pk_age;                        // <= 40 while rising
-    reg [15:0] seg_sq;                        // largest sq since the previous peak (slope)
-    reg [11:0] seg_hp;                        // largest |hp| since the previous peak
-    reg [10:0] seg_hp_age;
+    reg          rising;
+    reg [MW-1:0] pk_max;
+    reg [5:0]    pk_age;                      // <= 40 while rising
+    reg [SW-1:0] seg_sq;                      // largest sq since the previous peak (slope)
+    reg [11:0]   seg_hp;                      // largest |hp| since the previous peak
+    reg [10:0]   seg_hp_age;
 
     // levels and startup
-    reg [20:0] spk, npk, thr1;                // THR2 = thr1 >> 1
-    reg [20:0] learn_max, learn_sum;
+    reg [MW-1:0] spk, npk, thr1;              // THR2 = thr1 >> 1
+    reg [MW-1:0] learn_max, learn_sum;
 
     // QRS history
-    reg        have_qrs;
-    reg [10:0] qrs_age;
-    reg [15:0] last_slope;
-    reg [13:0] rr_acc;                        // RR average with three fraction bits
-    reg [11:0] rr_lim;
+    reg          have_qrs;
+    reg [10:0]   qrs_age;
+    reg [SW-1:0] last_slope;
+    reg [13:0]   rr_acc;                      // RR average with three fraction bits
+    reg [11:0]   rr_lim;
 
     // searchback candidate
-    reg        sb_valid;
-    reg [20:0] sb_val;
-    reg [10:0] sb_age;
-    reg [15:0] sb_slope;
-    reg [10:0] sb_r_age;
-    reg [1:0]  found;                         // 0 none, 1 threshold, 2 searchback
-    reg        in_sb;                         // the threshold update belongs to a searchback
+    reg          sb_valid;
+    reg [MW-1:0] sb_val;
+    reg [10:0]   sb_age;
+    reg [SW-1:0] sb_slope;
+    reg [10:0]   sb_r_age;
+    reg [1:0]    found;                       // 0 none, 1 threshold, 2 searchback
+    reg          in_sb;                       // the threshold update belongs to a searchback
 
-    reg signed [22:0] t;                      // result of the shared adder kept for the next step
+    reg signed [MW+1:0] t;                    // result of the shared adder kept for the next step
 
     function [10:0] inc11;                    // saturating age counter
         input [10:0] a;
@@ -92,14 +96,14 @@ module ab_decide (
     wire [10:0] seg_hp_age_a = inc11(seg_hp_age);
     wire        up           = mwi > pk_max;
     wire        confirm      = rising && !up && ((mwi < (pk_max >> 1)) || (pk_age_a >= PK_TIMEOUT));
-    wire [15:0] seg_sq_base  = confirm ? 16'd0 : seg_sq;
+    wire [SW-1:0] seg_sq_base = confirm ? {SW{1'b0}} : seg_sq;
     wire [11:0] seg_hp_base  = confirm ? 12'd0 : seg_hp;
 
     // the confirmed peak: the peak detector's registers, which hold still until BOOK
-    wire [20:0] c_val   = pk_max;
-    wire [5:0]  c_age   = pk_age_a;
-    wire [15:0] c_slope = seg_sq;
-    wire [10:0] c_r_age = seg_hp_age_a;
+    wire [MW-1:0] c_val   = pk_max;
+    wire [5:0]    c_age   = pk_age_a;
+    wire [SW-1:0] c_slope = seg_sq;
+    wire [10:0]   c_r_age = seg_hp_age_a;
 
     // ---- PEAK: classification (comparators), on the ages after this sample's increment --
     wire [10:0] qrs_age_i = inc11(qrs_age);
@@ -110,20 +114,20 @@ module ab_decide (
     wire        take_cand   = !twave && (c_val > (thr1 >> 1)) && (!sb_valid || (c_val > sb_val));
     wire        classify    = (idx >= LEARN_END) && confirm;          // a peak is classified now
     wire        cand_now    = classify && refr_ok && !is_qrs && take_cand;  // new searchback candidate
-    wire [21:0] pk_in       = ({1'b0, c_val} < t[21:0]) ? {1'b0, c_val} : t[21:0];  // min(peak, clip)
+    wire [MW:0] pk_in       = ({1'b0, c_val} < t[MW:0]) ? {1'b0, c_val} : t[MW:0];  // min(peak, clip)
     wire        sb_fire     = (found == 2'd0) && sb_valid && ({1'b0, qrs_age} > rr_lim);
 
     // ---- the shared adder/subtractor: alu_r = alu_a +/- alu_b -------------------------
-    wire signed [22:0] t_s2 = t >>> 2;
-    wire signed [22:0] t_s3 = t >>> 3;
-    reg  [22:0] alu_a, alu_b;
-    reg         alu_sub;
+    wire signed [MW+1:0] t_s2 = t >>> 2;
+    wire signed [MW+1:0] t_s3 = t >>> 3;
+    reg  [MW+1:0] alu_a, alu_b;
+    reg           alu_sub;
     always @* begin
-        alu_a = 23'd0; alu_b = 23'd0; alu_sub = 1'b0;
+        alu_a = 0; alu_b = 0; alu_sub = 1'b0;
         case (state)
-        S_LRN:  begin alu_a = {2'b00, learn_sum};          alu_b = {10'd0, mwi[20:8]};       end
-        S_INIT: begin alu_a = {4'd0, learn_max[20:2]};     alu_b = {6'd0, learn_max[20:4]};  end
-        S_CLIP: begin alu_a = {2'b00, spk};                alu_b = {4'd0, spk[20:2]};        end
+        S_LRN:  begin alu_a = {2'b00, learn_sum};          alu_b = {10'd0, mwi[MW-1:8]};     end
+        S_INIT: begin alu_a = {4'd0, learn_max[MW-1:2]};   alu_b = {6'd0, learn_max[MW-1:4]}; end
+        S_CLIP: begin alu_a = {2'b00, spk};                alu_b = {4'd0, spk[MW-1:2]};      end
         S_LD:   begin alu_a = {1'b0, pk_in};               alu_b = {2'b00, spk};  alu_sub = 1'b1; end
         S_LU:   begin alu_a = {2'b00, spk};                alu_b = t_s3;                     end
         S_ND:   begin alu_a = {2'b00, c_val};              alu_b = {2'b00, npk};  alu_sub = 1'b1; end
@@ -136,12 +140,12 @@ module ab_decide (
         endcase
     end
     // one adder with carry-in: a + (b ^ sub) + sub, written so that only one adder is built
-    wire [23:0] alu_sum = {alu_a, 1'b1} + {alu_b ^ {23{alu_sub}}, alu_sub};
-    wire [22:0] alu_r   = alu_sum[23:1];
+    wire [MW+2:0] alu_sum = {alu_a, 1'b1} + {alu_b ^ {(MW+2){alu_sub}}, alu_sub};
+    wire [MW+1:0] alu_r   = alu_sum[MW+2:1];
 
     // ---- BOOK: RR average (narrow, own adders) -----------------------------------------
     wire [10:0] f_age    = (found == 2'd1) ? {5'd0, c_age} : sb_age;
-    wire [15:0] f_slope  = (found == 2'd1) ? c_slope : sb_slope;
+    wire [SW-1:0] f_slope = (found == 2'd1) ? c_slope : sb_slope;
     wire [10:0] f_r_age  = (found == 2'd1) ? c_r_age : sb_r_age;
     wire [10:0] rr       = qrs_age - f_age;
     wire [14:0] rr_acc_n = {1'b0, rr_acc} + {4'd0, rr} - {4'd0, rr_acc[13:3]};
@@ -201,12 +205,12 @@ module ab_decide (
             // learning window, then the initial levels
             S_LRN: begin
                 if (mwi > learn_max) learn_max <= mwi;
-                learn_sum <= alu_r[20:0];
+                learn_sum <= alu_r[MW-1:0];
                 state <= (idx == LEARN_END - 9'd1) ? S_INIT : S_BOOK;
             end
             S_INIT: begin
-                spk     <= alu_r[20:0];
-                npk     <= {1'b0, learn_sum[20:1]};
+                spk     <= alu_r[MW-1:0];
+                npk     <= {1'b0, learn_sum[MW-1:1]};
                 qrs_age <= 11'd0;                       // the searchback timer starts here
                 state   <= S_TD;
             end
@@ -214,14 +218,14 @@ module ab_decide (
             // level update after the classification
             S_CLIP: begin t <= alu_r; state <= S_LD; end                // clip = 1.25 SPKI
             S_LD:   begin t <= alu_r; state <= S_LU; end                // min(peak, clip) - SPKI
-            S_LU:   begin spk <= alu_r[20:0]; state <= S_TD; end
+            S_LU:   begin spk <= alu_r[MW-1:0]; state <= S_TD; end
             S_ND:   begin t <= alu_r; state <= S_NU; end                // peak - NPKI
-            S_NU:   begin npk <= alu_r[20:0]; state <= S_TD; end
+            S_NU:   begin npk <= alu_r[MW-1:0]; state <= S_TD; end
 
             // THR1 = NPKI + (SPKI - NPKI) >>> 2
             S_TD: begin t <= alu_r; state <= S_TU; end
             S_TU: begin
-                thr1 <= alu_r[20:0];
+                thr1 <= alu_r[MW-1:0];
                 if (idx < LEARN_END || in_sb) begin
                     state <= S_BOOK;                            // initial levels, or after searchback
                 end else begin
@@ -239,7 +243,7 @@ module ab_decide (
                 end
             end
             S_SD: begin t <= alu_r; state <= S_SU; end                  // candidate - SPKI
-            S_SU: begin spk <= alu_r[20:0]; state <= S_TD; end
+            S_SU: begin spk <= alu_r[MW-1:0]; state <= S_TD; end
 
             S_BOOK: begin
                 if (found != 2'd0) begin

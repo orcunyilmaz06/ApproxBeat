@@ -81,11 +81,12 @@ What it took to get there, and what it showed:
   chosen on DS1 and improves the held-out DS2, where DER falls from 0.430 % to 0.412 %
   and record 228 from 20 to 3 missed beats. Record 228 now gives 3 under every rounding
   ([results/searchback_study.md](results/searchback_study.md), D14).
-- **A robust detector tolerates short words.** After the fix, the stored squared
-  derivative fits in 8 bits instead of 22 (4 LSBs dropped, 4 MSBs clipped). DER is
-  0.542 % against 0.544 %, and the design needs 1,127 flip-flops instead of 1,463
-  (-23 %). This is exploratory, over all 48 records, and still needs the DS1/DS2 check
-  ([results/int_study.md](results/int_study.md) section 4b, D13).
+- **Short words need a held-out check.** Over all 48 records, the stored squared
+  derivative looked fine in 8 bits instead of 16 (D13). Choosing by the protocol
+  instead, the DS1 rule picked a 6-bit `sq` with 29 % fewer flip-flops. It looked better
+  than the exact design on DS1 but failed on the held-out DS2: DER 0.668 % against
+  0.422 %, mostly from false positives in record 222. The design keeps 16 bits
+  ([results/wordlength_study.md](results/wordlength_study.md), D19).
 - **Rounding details stopped mattering.** All six rounding variants now give DER
   0.513-0.547 %, including Pan & Tompkins' own truncate-then-square. Its 12-bit squarer
   is the first approximate-multiplier candidate (D9).

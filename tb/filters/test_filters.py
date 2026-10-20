@@ -18,6 +18,8 @@ import numpy as np
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly
 
+from ab_tb import merge_shards, shard
+
 REPO = Path(__file__).resolve().parents[2]
 SMOKE = REPO / "tb" / "vectors"
 GOLDEN = REPO / "data" / "golden"
@@ -71,6 +73,7 @@ async def full_records(dut):
     paths = sorted(GOLDEN.glob("*_samples.npy"))
     if wanted:
         paths = [p for p in paths if p.name.split("_")[0] in wanted]
+    paths = shard(paths)
     assert paths, f"no golden vectors in {GOLDEN}: run ab_write_golden in MATLAB"
     counts = {}
     for path in paths:
@@ -81,6 +84,9 @@ async def full_records(dut):
 
 
 def write_report(counts):
+    counts = merge_shards(counts)
+    if counts is None:
+        return
     manifest = json.loads((GOLDEN / "manifest.json").read_text())
     lines = [
         "# rtl_filters: RTL filter chain against the golden vectors",

@@ -23,11 +23,37 @@ def stems(full):
     wanted = [r for r in os.environ.get("AB_RECORDS", "").split(",") if r] if full else []
     if wanted:
         found = [s for s in found if Path(s).name in wanted]
-    if full and os.environ.get("AB_SHARD"):    # "i/n": every n-th record from i (make full-parallel)
-        i, n = (int(k) for k in os.environ["AB_SHARD"].split("/"))
-        found = found[i::n]
+    if full:
+        found = shard(found)
     assert found, f"no golden vectors in {where}" + (": run ab_write_golden in MATLAB" if full else "")
     return found, bool(wanted)
+
+
+def shard(items):
+    """This shard's share of items in a sharded run (AB_SHARD=i/n, make full-parallel):
+    every n-th item from i. All items otherwise."""
+    if not os.environ.get("AB_SHARD"):
+        return items
+    i, n = (int(k) for k in os.environ["AB_SHARD"].split("/"))
+    return items[i::n]
+
+
+def merge_shards(counts):
+    """The counts of a complete run. Unsharded, that is counts itself. In a sharded run each
+    shard saves its counts in AB_PARTS; the shard that completes the set gets the merged
+    counts of all shards, the others None."""
+    if not os.environ.get("AB_SHARD"):
+        return counts
+    i, n = os.environ["AB_SHARD"].split("/")
+    parts = Path(os.environ["AB_PARTS"])
+    parts.mkdir(parents=True, exist_ok=True)
+    tmp = parts / f".{i}_of_{n}.json"
+    tmp.write_text(json.dumps(counts))
+    tmp.rename(parts / f"{i}_of_{n}.json")                 # atomic: the others never see half a file
+    done = sorted(parts.glob(f"*_of_{n}.json"))
+    if len(done) < int(n):
+        return None
+    return dict(sorted(kv for p in done for kv in json.loads(p.read_text()).items()))
 
 
 class EventChecker:
@@ -94,22 +120,11 @@ class EventChecker:
 
 
 def write_report(file, title, what, counts):
-    """results/<file>: one row per record (samples, peaks, beats), all bit-exact.
-
-    In a sharded run (AB_SHARD=i/n) each shard saves its counts in AB_PARTS, and the shard
-    that completes the set writes the report for all of them.
-    """
-    if os.environ.get("AB_SHARD"):
-        i, n = os.environ["AB_SHARD"].split("/")
-        parts = Path(os.environ["AB_PARTS"])
-        parts.mkdir(parents=True, exist_ok=True)
-        tmp = parts / f".{i}_of_{n}.json"
-        tmp.write_text(json.dumps(counts))
-        tmp.rename(parts / f"{i}_of_{n}.json")             # atomic: the others never see half a file
-        done = sorted(parts.glob(f"*_of_{n}.json"))
-        if len(done) < int(n):
-            return
-        counts = dict(sorted(kv for p in done for kv in json.loads(p.read_text()).items()))
+    """results/<file>: one row per record (samples, peaks, beats), all bit-exact. In a
+    sharded run, the shard that completes the set writes it (merge_shards)."""
+    counts = merge_shards(counts)
+    if counts is None:
+        return
     manifest = json.loads((GOLDEN / "manifest.json").read_text())
     tot = [sum(c[i] for c in counts.values()) for i in range(3)]
     lines = [

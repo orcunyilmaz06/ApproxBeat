@@ -26,7 +26,9 @@ Shuttle dates were checked against <https://tinytapeout.com/runs> on 2026-10-19.
 - **Area step 2, done (2026-10-20).** The peak is classified straight from the peak
   detector's registers, with no 54-bit copy: 1,435 flip-flops and 5,441 logic cells (D18).
   Next:
-  - More area: the word lengths of D13, with the DS1/DS2 check.
+  - Word lengths of D13, checked by DS1 choice and DS2 confirmation (2026-10-20): the
+    DS1 choice failed on DS2, and the design keeps 16 bits (D19). The RTL now takes the
+    word length as a parameter, for the accuracy-area front.
   - The Tiny Tapeout wrapper and its I/O protocol.
   - A GitHub repository for the TT GitHub Action.
   - LibreLane for real area.

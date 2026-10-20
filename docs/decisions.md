@@ -316,3 +316,50 @@ the 8-bit `sq` variant of D13 needs 1,127 flip-flops (-23 %).
 **Verified.** Bit-exact on the smoke vectors (decide, core) and end to end on all 48
 records: 276,457 peak and 109,794 beat events, the same table as before
 (`results/rtl_core.md`, `full-parallel`, 15 minutes).
+
+## 2026-10-20: D19. Word length of `sq`, chosen on DS1: not confirmed on DS2
+
+D13 found that `sq` could be stored in far fewer bits than 16, but it had judged that on
+all 48 records. This step made the choice by protocol item 9 (`ab_wordlength_study`,
+`results/wordlength_study.md`). The candidates drop e = 0-6 LSBs and clip c = 0-6 MSBs
+of the exact design (integer model, rounding on). The rule was written in the script
+header before the run:
+
+- **Acceptable:** on DS1, DER at most 0.02 pp above the exact design, with Se and +P
+  each at most 0.02 pp below it.
+- **Chosen:** the acceptable candidate with the fewest flip-flops.
+- **Confirmed:** only if the chosen candidate meets the same tolerance on DS2.
+
+**Result.** The rule chose 5 LSBs dropped and 5 MSBs clipped: `sq` in 6 bits, 1,043
+flip-flops instead of 1,463 (-29 %). On DS1 it looked better than the exact design, with
+DER 0.678 % against 0.719 %. On DS2 it is worse, 0.668 % against 0.422 %, so it fails
+the confirmation. Most of the difference is record 222, where false positives rise from
+13 to 122. Record 210 also misses 8 more beats. **Not adopted: the design keeps `sq` at
+16 bits.**
+
+**What the grid shows.** Dropping 5 or more LSBs raises DS2 DER to 0.65 % or more in
+every row, while DS1 barely moves. The records that expose it are all in DS2. With up to
+4 LSBs dropped and up to 5 MSBs clipped, the DS2 DER stays within the tolerance.
+Clipping 6 MSBs fails on both sets, as D13 found.
+
+**Lesson.** "Fewest flip-flops within tolerance" picks the edge of the region that is
+acceptable on DS1, where one unseen record can push it over. A rule with a margin
+would have been safer, for example one that also requires the neighbouring grid points
+to be acceptable. Writing such a rule now, after looking at DS2, would not give a
+held-out result, so no other candidate is adopted on this evidence.
+
+**What stays.** The RTL takes the word length as parameters: `SQ_SHIFT` and `SQ_BITS`
+of `ab_core`, with the MWI and level widths derived from them. The defaults are the
+exact design, and they are bit-exact against its golden vectors. Variants for the
+accuracy-area front can now be synthesized without editing the RTL, and `flow/synth`
+prints the parameters it used. Only the defaults are verified so far. A variant counts
+as correct only once it passes against golden vectors generated with its own
+parameters.
+
+**Verified (defaults).** The parametric RTL is bit-exact on the smoke vectors (filters,
+decide, core) and on all 48 records. The filter chain matches at every stage of all
+17,342,976 samples, in 6 minutes on 6 simulators (`results/rtl_filters.md`). The core
+matches end to end: 276,457 peak and 109,794 beat events (`results/rtl_core.md`).
+Synthesis gives the same 1,435 flip-flops. The filter chain maps to 2,513 logic cells
+instead of 2,604, because the squarer is now written generically for any `SQ_SHIFT`
+(`results/synth_core.md`).

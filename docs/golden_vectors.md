@@ -72,9 +72,11 @@ values. `tb/filters` compares those wires with columns 1-5 of `samples` on every
 
 ## Decision logic: `rtl/ab_decide.v`
 
-Ports: `clk`, `rst_n`, `in_valid`, `mwi[20:0]`, `sq[15:0]` and `hp[12:0]` (signed) in, and
-`done`, `peak_valid`, `peak_class[1:0]`, `beat_valid`, `beat_kind` and `beat_r_age[10:0]`
-out. Each sample runs through the model's steps in the model's order:
+Ports: `clk`, `rst_n`, `in_valid`, `mwi[SQ_BITS+4:0]`, `sq[SQ_BITS-1:0]` and `hp[12:0]`
+(signed) in, and `done`, `peak_valid`, `peak_class[1:0]`, `beat_valid`, `beat_kind` and
+`beat_r_age[10:0]` out. `SQ_BITS` is 16 by default, the exact design that these vectors
+come from. `ab_filters` and `ab_core` also take `SQ_SHIFT`, 6 by default (D19). Each
+sample runs through the model's steps in the model's order:
 
 - PEAK: age counters. When the peak detector confirms a peak, it is classified in
   the same cycle.

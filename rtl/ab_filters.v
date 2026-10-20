@@ -1,22 +1,27 @@
 // ApproxBeat: Pan-Tompkins filter chain (low-pass, high-pass, derivative, squarer, MWI).
 //
-// Bit-exact to matlab/model/ab_pt_filters.m in integer mode with the baseline parameters
-// (docs/algorithm.md, word lengths from ab_int_widths). One ADC sample per in_valid; every
-// stage of that sample is computed in the same clock cycle and registered at its end.
+// Bit-exact to matlab/model/ab_pt_filters.m in integer mode, with SQ_SHIFT and SQ_BITS equal
+// to sq_shift and sq_bits of ab_params (docs/algorithm.md, word lengths from ab_int_widths).
+// Saturation always bounds sq, so the MWI, a sum of 30, needs SQ_BITS + 5 bits.
+// One ADC sample per in_valid; every stage of that sample is computed in the same clock
+// cycle and registered at its end.
 // The *_n wires carry the incoming sample's stage values during the in_valid cycle; the
 // testbench compares them with the golden vectors (docs/golden_vectors.md).
 `default_nettype none
 `timescale 1ns / 1ps
 
-module ab_filters (
+module ab_filters #(
+    parameter SQ_SHIFT = 6,                // sq = (der^2 + half an LSB) >> SQ_SHIFT (D9, D10)
+    parameter SQ_BITS  = 16                // sq saturates at 2^SQ_BITS - 1 (D11)
+) (
     input  wire               clk,
     input  wire               rst_n,       // synchronous, active low
     input  wire               in_valid,    // in_adu holds a new sample this cycle
     input  wire        [10:0] in_adu,      // 11-bit ADC code, 1024 = 0 mV
     output wire signed [11:0] lp,          // stage outputs of the last sample
     output wire signed [12:0] hp,
-    output wire        [15:0] sq,
-    output reg         [20:0] mwi
+    output wire [SQ_BITS-1:0] sq,
+    output reg  [SQ_BITS+4:0] mwi
 );
     // Delay lines, packed; slot k holds the value of sample n-1-k.
     reg        [12*11-1:0] x_line;         // x[n-1]  .. x[n-12]
@@ -24,7 +29,7 @@ module ab_filters (
     reg        [32*12-1:0] lp_line;        // lp[n-1] .. lp[n-32]
     reg signed [16:0]      hsum;           // running sum of the last 32 lp
     reg        [4*13-1:0]  hp_line;        // hp[n-1] .. hp[n-4]
-    reg        [30*16-1:0] sq_line;        // sq[n-1] .. sq[n-30]
+    reg [30*SQ_BITS-1:0]   sq_line;        // sq[n-1] .. sq[n-30]
 
     // Part-selects are unsigned in Verilog, so every slot used in arithmetic gets its own
     // signed wire first; a single unsigned operand would make the whole expression unsigned.
@@ -49,18 +54,19 @@ module ab_filters (
     wire signed [12:0] hp4    = hp_line[3*13 +: 13];
     wire signed [14:0] der_n  = (hp_n <<< 1) + hp1 - hp3 - (hp4 <<< 1);
 
-    // squarer: sq = (der^2 + 32) >> 6, rounded to nearest, saturated at 16 bits
+    // squarer: sq = (der^2 + half) >> SQ_SHIFT, rounded to nearest, saturated at SQ_BITS
+    localparam [27:0]  HALF   = (SQ_SHIFT > 0) ? 28'd1 << (SQ_SHIFT - 1) : 28'd0;
     wire signed [29:0] der2   = der_n * der_n;                   // 0 .. 13812^2 < 2^28
-    wire        [21:0] sq_r   = (der2[27:0] + 28'd32) >> 6;
-    wire        [15:0] sq_n   = (|sq_r[21:16]) ? 16'hFFFF : sq_r[15:0];
+    wire        [27:0] sq_r   = (der2[27:0] + HALF) >> SQ_SHIFT;
+    wire [SQ_BITS-1:0] sq_n   = (|(sq_r >> SQ_BITS)) ? {SQ_BITS{1'b1}} : sq_r[SQ_BITS-1:0];
 
     // moving-window integrator: sum of sq[n-29..n]
-    wire        [15:0] sq30   = sq_line[29*16 +: 16];
-    wire        [20:0] mwi_n  = mwi + sq_n - sq30;
+    wire [SQ_BITS-1:0] sq30   = sq_line[29*SQ_BITS +: SQ_BITS];
+    wire [SQ_BITS+4:0] mwi_n  = mwi + sq_n - sq30;
 
     assign lp = lp_line[0 +: 12];
     assign hp = hp_line[0 +: 13];
-    assign sq = sq_line[0 +: 16];
+    assign sq = sq_line[0 +: SQ_BITS];
 
     always @(posedge clk) begin
         if (!rst_n) begin
@@ -79,7 +85,7 @@ module ab_filters (
             lp_line <= {lp_line[31*12-1:0], lp_n};
             hsum    <= hsum_n;
             hp_line <= {hp_line[3*13-1:0], hp_n};
-            sq_line <= {sq_line[29*16-1:0], sq_n};
+            sq_line <= {sq_line[29*SQ_BITS-1:0], sq_n};
             mwi     <= mwi_n;
         end
     end

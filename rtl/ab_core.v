@@ -6,7 +6,10 @@
 `default_nettype none
 `timescale 1ns / 1ps
 
-module ab_core (
+module ab_core #(
+    parameter SQ_SHIFT = 6,           // word length of the squared derivative: sq_shift and
+    parameter SQ_BITS  = 16           // sq_bits of ab_params
+) (
     input  wire        clk,
     input  wire        rst_n,         // synchronous, active low
     input  wire        in_valid,      // in_adu holds a new sample this cycle
@@ -20,18 +23,18 @@ module ab_core (
 );
     wire signed [11:0] lp;
     wire signed [12:0] hp;
-    wire        [15:0] sq;
-    wire        [20:0] mwi;
+    wire [SQ_BITS-1:0] sq;
+    wire [SQ_BITS+4:0] mwi;
     reg                filt_valid;    // filter outputs of the last in_valid are ready
 
     always @(posedge clk) filt_valid <= rst_n & in_valid;
 
-    ab_filters u_filters (
+    ab_filters #(.SQ_SHIFT(SQ_SHIFT), .SQ_BITS(SQ_BITS)) u_filters (
         .clk(clk), .rst_n(rst_n), .in_valid(in_valid), .in_adu(in_adu),
         .lp(lp), .hp(hp), .sq(sq), .mwi(mwi)
     );
 
-    ab_decide u_decide (
+    ab_decide #(.SQ_BITS(SQ_BITS)) u_decide (
         .clk(clk), .rst_n(rst_n), .in_valid(filt_valid), .mwi(mwi), .sq(sq), .hp(hp),
         .done(done), .peak_valid(peak_valid), .peak_class(peak_class),
         .beat_valid(beat_valid), .beat_kind(beat_kind), .beat_r_age(beat_r_age)

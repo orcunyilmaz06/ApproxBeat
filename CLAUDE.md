@@ -60,6 +60,8 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
   `wordlength_grid` and `int_study`): `matlab -batch "cd('matlab'); ab_setup; ab_int_study"`
 - Searchback study (~6 min; candidates for the SPKI clip, DS1 choice, robustness):
   `matlab -batch "cd('matlab'); ab_setup; ab_searchback_study"`
+- Word-length study (~8 min; `sq` word length chosen on DS1, checked on DS2, D19):
+  `matlab -batch "cd('matlab'); ab_setup; ab_wordlength_study"`
 - Golden vectors for the RTL (format: `docs/golden_vectors.md`). Full set, all 48 records
   to `data/golden` (~410 MB, ~20 s): `matlab -batch "cd('matlab'); ab_setup; ab_write_golden"`.
   Smoke set to `tb/vectors` (committed): `... ab_write_golden('smoke')`.
@@ -70,8 +72,8 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
   `tb\core` runs the smoke set (a few seconds each). Run all three after every RTL change.
   Adding `AB_FULL=1` covers all 48 records: filters ~25 min and core ~55 min, writing
   `results/rtl_filters.md` and `results/rtl_core.md`. `AB_RECORDS=203,228` gives a subset.
-  For `tb\core` and `tb\decide`, the target `full-parallel` runs the 48 records on
-  `AB_JOBS=6` simulators at once and writes the same report (`tb/common/full_parallel.mk`).
+  The target `full-parallel` runs the 48 records on `AB_JOBS=6` simulators at once and
+  writes the same report (`tb/common/full_parallel.mk`): filters ~6 min, core ~13 min.
   The event checker the testbenches share is in `tb/common/ab_tb.py`.
 - Generic synthesis (Yosys in WSL, ~10 s, writes `results/synth_core.md`, which reconciles
   the flip-flops with the declared registers): `scripts\wsl_make.ps1 flow\synth`.

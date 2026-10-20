@@ -1,0 +1,58 @@
+# Tiny Tapeout project information (TTGF26c, GF180). Format: ttgf-verilog-template.
+project:
+  title:        "ApproxBeat: Pan-Tompkins ECG beat detector"
+  author:       ""      # TODO: your name
+  discord:      ""      # optional
+  description:  "Streaming Pan-Tompkins QRS detector for 200 Hz ECG, bit-exact to its integer model on MIT-BIH"
+  language:     "Verilog"
+  clock_hz:     10000000  # any clock works: the host hands over each sample by handshake
+
+  # One GF180 tile is about 340 x 160 um. Estimate before LibreLane: ~1,460 flip-flops and
+  # ~5,500 logic cells (results/synth_core.md). To be confirmed by the first hardening run.
+  tiles: "4x2"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 3x4, 4x4
+
+  # Your top module name must start with "tt_um_".
+  top_module:  "tt_um_approxbeat"
+
+  # Source files, in ./src, one per line. test/Makefile lists them too (PROJECT_SOURCES).
+  source_files:
+    - "project.v"
+    - "ab_core.v"
+    - "ab_filters.v"
+    - "ab_decide.v"
+
+# The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
+# uo[7:0] is a result byte selected by PAGE (uio[4]): page 0 / page 1. Protocol: docs/info.md.
+pinout:
+  # Inputs
+  ui[0]: "ADC bit 0"
+  ui[1]: "ADC bit 1"
+  ui[2]: "ADC bit 2"
+  ui[3]: "ADC bit 3"
+  ui[4]: "ADC bit 4"
+  ui[5]: "ADC bit 5"
+  ui[6]: "ADC bit 6"
+  ui[7]: "ADC bit 7"
+
+  # Outputs
+  uo[0]: "R-age bit 0 / R-age bit 8"
+  uo[1]: "R-age bit 1 / R-age bit 9"
+  uo[2]: "R-age bit 2 / R-age bit 10"
+  uo[3]: "R-age bit 3 / PEAK"
+  uo[4]: "R-age bit 4 / peak class bit 0"
+  uo[5]: "R-age bit 5 / peak class bit 1"
+  uo[6]: "R-age bit 6 / 0"
+  uo[7]: "R-age bit 7 / 0"
+
+  # Bidirectional pins
+  uio[0]: "ADC bit 8 (in)"
+  uio[1]: "ADC bit 9 (in)"
+  uio[2]: "ADC bit 10 (in)"
+  uio[3]: "REQ (in)"
+  uio[4]: "PAGE (in)"
+  uio[5]: "KIND (out)"
+  uio[6]: "BEAT (out)"
+  uio[7]: "ACK (out)"
+
+# Do not change!
+yaml_version: 6

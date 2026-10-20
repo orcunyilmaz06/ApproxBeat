@@ -363,3 +363,47 @@ matches end to end: 276,457 peak and 109,794 beat events (`results/rtl_core.md`)
 Synthesis gives the same 1,435 flip-flops. The filter chain maps to 2,513 logic cells
 instead of 2,604, because the squarer is now written generically for any `SQ_SHIFT`
 (`results/synth_core.md`).
+
+## 2026-10-20: D20. Tiny Tapeout wrapper: a four-phase handshake and paged results
+
+`src/project.v` (`tt_um_approxbeat`) puts `ab_core` behind the Tiny Tapeout pins. The
+layout follows TinyTapeout/ttgf-verilog-template, the GF180 template for TTGF26c:
+sources only in `src/` (so `rtl/` became `src/`), `info.yaml`, `docs/info.md`,
+`src/config.json` for LibreLane, and `test/` for the cocotb test. The TT CI runs that
+test on the RTL and on the gate-level netlist.
+
+**Handshake rather than a free-running strobe.** The samples come from a host, in
+practice the demo board's microcontroller, at a rate unrelated to the chip clock. The
+host raises REQ with a sample on the pins. The chip synchronizes REQ through two
+flip-flops, processes the sample, latches the results and raises ACK. The host reads
+them and drops REQ, and the chip drops ACK. This works at any ratio of host speed to
+clock speed, without a FIFO and without missing a 1-cycle result pulse. The data pins
+need no synchronizer, because they are stable for at least two clocks before they are
+used.
+
+**Pins.** Eleven sample bits and REQ need 12 inputs: `ui[7:0]` and `uio[2:0]`, plus
+`uio[3]`. The results are BEAT, KIND, an 11-bit R-peak age, PEAK and a 2-bit class.
+With ACK that is 17 bits, against 8 + 3 free outputs. ACK, BEAT and KIND therefore get
+their own pins (`uio[7:5]`). `uo[7:0]` shows one of two pages, selected by PAGE
+(`uio[4]`): the low byte of the age, or its high bits with PEAK and the class. The
+R-peak age is what lets an on-silicon run be scored with the 150 ms matching window. A
+beat is declared up to a few hundred ms after its R peak.
+
+**Clock.** The default `CLOCK_PERIOD` of 20 ns (50 MHz) is unrealistic for this design.
+The filter chain computes a whole sample, including a 15 x 15 multiplier, in one cycle.
+A sample takes about 12 cycles with the handshake, and 200 Hz leaves 5 ms, so 10 MHz
+(`clock_hz`, `CLOCK_PERIOD` 100 ns) still leaves a factor of about 4,000. LibreLane will
+show the real slack.
+
+**Size.** The wrapper adds 23 flip-flops and 45 logic cells. The whole chip is 1,458
+flip-flops and 5,392 logic cells (`results/synth_core.md`). `info.yaml` asks for 4x2
+tiles: one GF180 tile is about 340 x 160 um, and this is a rough estimate from cell
+counts until the first hardening run.
+
+**Verified.** `test/test.py` sends the three smoke streams (18,600 samples) through the
+pins and matches every peak (sample, class) and every beat (sample, R-peak age, kind)
+against the golden tables, in about 10 s.
+
+**Open.** These are the owner's to fill in: the author and the GitHub username in the
+top module name (now `tt_um_approxbeat`), a license for the repository, and the GitHub
+repository that the TT actions need.

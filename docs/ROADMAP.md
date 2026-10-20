@@ -25,13 +25,19 @@ Shuttle dates were checked against <https://tinytapeout.com/runs> on 2026-10-19.
   latch: 1,489 flip-flops and 5,401 logic cells, down from 1,516 and 7,057 (D17).
 - **Area step 2, done (2026-10-20).** The peak is classified straight from the peak
   detector's registers, with no 54-bit copy: 1,435 flip-flops and 5,441 logic cells (D18).
+- **Word lengths of D13, checked (2026-10-20).** The DS1 choice failed on DS2, and v1
+  keeps 16 bits (D19). The RTL now takes the word length as a parameter, for the
+  accuracy-area front.
+- **Tiny Tapeout wrapper, done (2026-10-20).** `src/project.v` (`tt_um_approxbeat`)
+  takes one sample per four-phase handshake and holds paged results. `info.yaml`,
+  `docs/info.md` and `test/` follow the ttgf-verilog-template, and the pin-level test
+  passes on the smoke vectors. The whole chip has 1,458 flip-flops and 5,392 logic cells
+  (D20).
   Next:
-  - Word lengths of D13, checked by DS1 choice and DS2 confirmation (2026-10-20): the
-    DS1 choice failed on DS2, and the design keeps 16 bits (D19). The RTL now takes the
-    word length as a parameter, for the accuracy-area front.
-  - The Tiny Tapeout wrapper and its I/O protocol.
-  - A GitHub repository for the TT GitHub Action.
-  - LibreLane for real area.
+  - A GitHub repository, so that the TT GitHub Actions can harden the design (owner).
+  - LibreLane on GF180: the real area, the tile count (4x2 estimated) and timing at
+    10 MHz.
+  - The rest of `info.yaml`: author, and a license for the repository (owner).
 
 ## Shuttles
 

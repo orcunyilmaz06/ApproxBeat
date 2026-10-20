@@ -23,8 +23,10 @@ Tapeout chip.
 | Generic Yosys synthesis | done; flip-flops reconciled with the register inventory ([results/synth_core.md](results/synth_core.md)) |
 | Area step 1: one shared adder in the decision logic, no input latch | done; 1,489 flip-flops and 5,401 logic cells, down from 1,516 and 7,057 (D17) |
 | Area step 2: classify the peak straight from the peak detector | done; 1,435 flip-flops and 5,441 logic cells (D18) |
-| Further area work, Tiny Tapeout wrapper, LibreLane | next |
-| LibreLane: IHP SG13G2 / GF180 | planned |
+| Word length of `sq`: chosen on DS1, checked on DS2 | not confirmed; v1 keeps 16 bits, the RTL takes it as a parameter (D19) |
+| Tiny Tapeout wrapper (`src/project.v`): pins, handshake, `info.yaml`, pin-level test | done; the smoke vectors pass through the chip pins; 1,458 flip-flops and 5,392 logic cells for the whole chip (D20) |
+| GitHub repository, LibreLane on GF180 | next |
+| LibreLane on IHP SG13G2, for the v2 variants | planned |
 | Tiny Tapeout | target TTGF26c, closes 2026-12-07 |
 
 Plan and dates: [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -131,7 +133,10 @@ matlab/
            ab_pt_float / ab_pt_int, ab_int_widths (word lengths), ab_state_inventory
   eval/    beat matching, scoring (ab_run_eval), studies, golden vectors, plots
   tests/   unit tests, run by ab_test
-src/       Verilog: ab_filters.v (filter chain), ab_decide.v (decision logic), ab_core.v
+src/       Verilog: ab_filters.v (filter chain), ab_decide.v (decision logic), ab_core.v,
+           project.v (Tiny Tapeout top, tt_um_approxbeat); config.json (LibreLane settings)
+info.yaml  Tiny Tapeout project description and pinout; docs/info.md is its datasheet page
+test/      Tiny Tapeout testbench: smoke vectors through the chip pins (also gate level)
 tb/filters/, tb/decide/, tb/core/  cocotb testbenches, bit-exact against the golden vectors
 tb/common/   event checker shared by the testbenches
 flow/synth/  generic Yosys synthesis; report.py reconciles flip-flops with the inventory

@@ -75,8 +75,13 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
   The target `full-parallel` runs the 48 records on `AB_JOBS=6` simulators at once and
   writes the same report (`tb/common/full_parallel.mk`): filters ~6 min, core ~13 min.
   The event checker the testbenches share is in `tb/common/ab_tb.py`.
-- Generic synthesis (Yosys in WSL, ~10 s, writes `results/synth_core.md`, which reconciles
-  the flip-flops with the declared registers): `scripts\wsl_make.ps1 flow\synth`.
+- Tiny Tapeout test, the smoke vectors through the chip pins (~10 s): `scripts\wsl_make.ps1
+  test`. This is the TT layout: `test/` with `tb.v` and `test.py`, `info.yaml`,
+  `docs/info.md`, `src/config.json`. TT's CI runs the same test, on the gate-level
+  netlist too, so `test.py` must use the pins only.
+- Generic synthesis of the chip (`tt_um_approxbeat`; Yosys in WSL, ~10 s, writes
+  `results/synth_core.md`, which reconciles the flip-flops with the declared registers):
+  `scripts\wsl_make.ps1 flow\synth`.
 - Rebuild the WSL venv and self-test:
   `wsl -d Ubuntu-24.04 --cd <repo> -- bash scripts/setup_wsl.sh`. Commands with nested
   quotes get mangled between PowerShell and WSL, so put them in a script file.
@@ -102,7 +107,9 @@ changes. Algorithm choices are made on DS1 and reported on DS2 (`eval_protocol.m
 
 - MATLAB: one function per file with an `ab_` prefix. Every output uses 0-based sample
   indices (the WFDB and RTL convention). Times are in seconds.
-- Verilog (planned): Verilog-2005 that Yosys accepts. One clock `clk`, synchronous
-  active-low reset `rst_n` (the Tiny Tapeout convention), explicit `$signed`, and a cocotb
-  test for every module.
+- Verilog: Verilog-2005 that Yosys accepts, in `src/` (Tiny Tapeout builds only from
+  there). One clock `clk`, synchronous active-low reset `rst_n` (the Tiny Tapeout
+  convention), explicit `$signed`, and a cocotb test for every module. The chip top is
+  `tt_um_approxbeat` in `src/project.v`. A new source file goes into `info.yaml`
+  (`source_files`) and `test/Makefile` (`PROJECT_SOURCES`) too.
 - Code, comments, docs and commit messages are in English. The owner may chat in Turkish.

@@ -1,0 +1,5 @@
+# Installed by the Tiny Tapeout CI (Python 3.11) for test/: cocotb as in tb/requirements.txt;
+# numpy only loads the golden vectors, so any 2.x release for Python 3.11 will do
+pytest==8.4.2
+cocotb==2.1.0
+numpy>=2.0,<3

@@ -107,6 +107,16 @@ sample per `done` (4 to 13 clock cycles). `tb/core` checks it end to end, from t
     scripts\wsl_make.ps1 tb\core full-parallel  the same 48 records on 6 simulators
                                                 at once (AB_JOBS=6), same report
 
+## Chip: `src/project.v`
+
+`tt_um_approxbeat`, the Tiny Tapeout top, around `ab_core`. It takes one sample per
+four-phase handshake and holds the results of the last sample on the pins (protocol and
+pinout: `docs/info.md`, D20). `test/` checks it from the pins alone, so the same test
+runs on the gate-level netlist. Every peak (sample, class) and every beat (sample,
+R-peak age, kind) of the smoke set must equal the golden tables:
+
+    scripts\wsl_make.ps1 test                   smoke set through the pins, ~10 s
+
 ## What the RTL must reproduce
 
 The core takes one sample per `in_valid` strobe and spends 4 to 13 clock cycles on it,

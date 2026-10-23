@@ -7,7 +7,6 @@
 // cycle, and the decision logic starts on them in the next one. Present the next sample
 // only after done. Bit-exact to ab_pt_int (docs/golden_vectors.md).
 `default_nettype none
-`timescale 1ns / 1ps
 
 module ab_core #(
     parameter SQ_SHIFT = 6,           // word length of the squared derivative: sq_shift and
@@ -24,8 +23,9 @@ module ab_core #(
     output wire        peak_valid,    // pulse: an MWI peak was classified on this sample
     output wire [1:0]  peak_class     // 0 refractory, 1 QRS, 2 noise, 3 T wave
 );
-    wire signed [11:0] lp;
+    wire signed [11:0] lp;            // only tb/filters reads it, on ab_filters itself
     wire signed [12:0] hp;
+    wire _unused = &{1'b0, lp};
     wire [SQ_BITS-1:0] sq;
     wire [SQ_BITS+4:0] mwi;
     reg                filt_valid;    // filter outputs of the last in_valid are ready

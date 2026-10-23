@@ -20,6 +20,26 @@ jobs:
         with:
           pdk: gf180mcuD
 
+      # Timing, area and power from LibreLane's final metrics, into the run summary
+      - name: LibreLane metrics
+        if: always()
+        shell: bash
+        run: |
+          m=runs/wokwi/final/metrics.json
+          if [ ! -f "$m" ]; then echo "No $m: the hardening did not finish." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          python3 - "$m" >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          import json, re, sys
+          m = json.load(open(sys.argv[1]))
+          keep = re.compile(r"^(timing__(setup|hold)(_vio)?__(ws|tns|count)"
+                            r"|design__(instance__(count|area|utilization)|core__area|die__area)"
+                            r"|power__total|design__max_\w+_violation__count)(__corner:.*)?$")
+          print("### LibreLane final metrics (`runs/wokwi/final/metrics.json`)\n")
+          print("| Metric | Value |\n|---|---|")
+          for k, v in sorted(m.items()):
+              if keep.match(k):
+                  print(f"| `{k}` | {v} |")
+          EOF
+
   precheck:
     needs: gds
     runs-on: ubuntu-24.04

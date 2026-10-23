@@ -420,3 +420,27 @@ repository that the TT actions need.
   changed every commit hash. The hashes quoted in this log were mapped to the new ones,
   for example D17's reports at fc73d89 and d9be4ee. The golden-vector manifest and the
   reports that quote it were regenerated.
+
+## 2026-10-23: D22. First hardening on GitHub: GF180, 4x2 tiles, every check passes
+
+Run [40003508673](https://github.com/orcunyilmaz06/ApproxBeat/actions/runs/40003508673)
+(commit f4dc72f, LibreLane 3.0.14 via `tt-gds-action@ttgf26c`):
+
+- **Jobs.** gds, precheck, gl_test and viewer all pass. The precheck runs 12 checks,
+  GF180 DRC and the antenna check among them. gl_test is the pin-level smoke test,
+  run on the gate-level netlist.
+- **Utilization.** 56.7 % of the 4x2 area, with a wire length of 403 mm.
+- **Cells.** 10,916 cells, not counting fill and tap cells. 1,458 of them are
+  flip-flops, exactly as many as generic synthesis predicts (`results/synth_core.md`).
+  There are 1,780 buffers and 337 clock inverters.
+- **Linter.** 313 warnings, none of them functional.
+  - About 298 are TIMESCALEMOD: the sources carried a `` `timescale `` and the cell
+    models do not. `src/` now has none; cocotb sets the default timescale for Icarus.
+  - 11 are WIDTHEXPAND: sign or zero extensions in `ab_filters` that are intended.
+    They are now marked with `lint_off`.
+  - 4 are UNUSEDSIGNAL: bits that are never used by design. They now go into
+    `_unused` wires, the Tiny Tapeout idiom.
+- **Timing.** The summary does not show it. The `gds` workflow now writes LibreLane's
+  final metrics (timing, area and power) into the run summary.
+- **Tiles.** At 56.7 %, the design might fit 3x2 tiles, 6 instead of 8, at about 76 %.
+  The next step tries this on its own branch.

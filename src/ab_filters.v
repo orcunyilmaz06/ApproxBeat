@@ -11,7 +11,6 @@
 // The *_n wires carry the incoming sample's stage values during the in_valid cycle; the
 // testbench compares them with the golden vectors (docs/golden_vectors.md).
 `default_nettype none
-`timescale 1ns / 1ps
 
 module ab_filters #(
     parameter SQ_SHIFT = 6,                // sq = (der^2 + half an LSB) >> SQ_SHIFT (D9, D10)
@@ -36,6 +35,8 @@ module ab_filters #(
 
     // Part-selects are unsigned in Verilog, so every slot used in arithmetic gets its own
     // signed wire first; a single unsigned operand would make the whole expression unsigned.
+    // Narrow operands are sign- or zero-extended to the width of each sum on purpose.
+    /* verilator lint_off WIDTHEXPAND */
 
     // low-pass: y = 2 y[n-1] - y[n-2] + x - 2 x[n-6] + x[n-12], lp = y >>> 5
     wire signed [10:0] x      = {~in_adu[10], in_adu[9:0]};      // in_adu - 1024
@@ -66,6 +67,9 @@ module ab_filters #(
     // moving-window integrator: sum of sq[n-29..n]
     wire [SQ_BITS-1:0] sq30   = sq_line[29*SQ_BITS +: SQ_BITS];
     wire [SQ_BITS+4:0] mwi_n  = mwi + sq_n - sq30;
+    /* verilator lint_on WIDTHEXPAND */
+
+    wire _unused = &{1'b0, der2[29:28]};                         // der2 < 2^28: always 0
 
     assign lp = lp_line[0 +: 12];
     assign hp = hp_line[0 +: 13];

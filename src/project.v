@@ -18,7 +18,6 @@
 //           classified on this sample, class 0 refractory, 1 QRS, 2 noise, 3 T wave
 // Pin list and protocol: docs/info.md.
 `default_nettype none
-`timescale 1ns / 1ps
 
 module tt_um_orcunyilmaz06_approxbeat (
     input  wire [7:0] ui_in,    // ADC sample bits 7..0 (11-bit code, 1024 = 0 mV)

@@ -20,7 +20,6 @@
 // beat_valid and done pulse in the cycle after BOOK. Event positions are age counters
 // (samples since the event) that saturate at 2047.
 `default_nettype none
-`timescale 1ns / 1ps
 
 module ab_decide #(
     parameter SQ_BITS = 16                  // word length of sq; the MWI has SQ_BITS + 5 bits
@@ -155,6 +154,9 @@ module ab_decide #(
     wire [10:0] rr_avg   = rr_acc_n[13:3];
     wire [11:0] rr_lim_n = {1'b0, rr_avg} + {2'b00, rr_avg[10:1]} + {4'd0, rr_avg[10:3]}
                          + {6'd0, rr_avg[10:5]};
+
+    // the adder's carry-in bit, and the RR sum's top bit (rr_acc_n < 2^14)
+    wire _unused = &{1'b0, alu_sum[0], rr_acc_n[14]};
 
     always @(posedge clk) begin
         peak_valid <= 1'b0;

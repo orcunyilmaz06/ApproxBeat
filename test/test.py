@@ -78,7 +78,7 @@ async def check_stream(dut, stem):
 
 @cocotb.test()
 async def smoke_vectors(dut):
-    cocotb.start_soon(Clock(dut.clk, 100, unit="ns").start())    # 10 MHz, as in info.yaml
+    cocotb.start_soon(Clock(dut.clk, 200, unit="ns").start())    # 5 MHz, as in info.yaml
     stems = sorted(str(p)[:-len("_samples.npy")] for p in VECTORS.glob("*_samples.npy"))
     assert stems, f"no smoke vectors in {VECTORS}"
     for stem in stems:

@@ -5,7 +5,8 @@ project:
   discord:      ""      # optional
   description:  "Streaming Pan-Tompkins QRS detector for 200 Hz ECG, bit-exact to its integer model on MIT-BIH"
   language:     "Verilog"
-  clock_hz:     10000000  # any clock works: the host hands over each sample by handshake
+  clock_hz:     5000000   # at 10 MHz the slow corner missed setup by 24-32 ns (D23); the host hands over
+                          # each sample by handshake, so any slower clock works too
 
   # One GF180 tile is about 340 x 160 um. In 4x2 the design filled 56.7 % (D22); 3x2 is
   # about 76 % full, with the placement density raised to 80 % (src/config.json).

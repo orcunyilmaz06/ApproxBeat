@@ -444,3 +444,33 @@ Run [40003508673](https://github.com/orcunyilmaz06/ApproxBeat/actions/runs/40003
   final metrics (timing, area and power) into the run summary.
 - **Tiles.** At 56.7 %, the design might fit 3x2 tiles, 6 instead of 8, at about 76 %.
   The next step tries this on its own branch.
+
+## 2026-10-24: D23. 3x2 tiles at 5 MHz: timing closes in every corner
+
+LibreLane 3.0.14 on GF180, through the Tiny Tapeout `gds` action, with timing checked in
+9 corners. The numbers come from the runs' summaries, which list the final metrics (D22).
+
+| Run (commit) | Tiles | Clock | Utilization | Setup WS, slow corner | Setup WS, typical corner | Hold WS |
+|---|---|---|---:|---:|---:|---:|
+| [40009820654](https://github.com/orcunyilmaz06/ApproxBeat/actions/runs/40009820654) (d61ef5c) | 4x2 | 10 MHz | 56.9 % | -23.8 ns | +28.5 ns | +0.29 ns |
+| [40009820681](https://github.com/orcunyilmaz06/ApproxBeat/actions/runs/40009820681) (e90618d) | 3x2 | 10 MHz | 76.3 % | -32.2 ns | not read | +0.29 ns |
+| [40013785167](https://github.com/orcunyilmaz06/ApproxBeat/actions/runs/40013785167) (225f4e8) | 3x2 | 5 MHz | 76.3 % | +8.5 ns | +85.2 ns | +0.31 ns |
+
+The slow corner is `ss_125C_3v00` and the typical corner `tt_025C_3v30`. WS is the worst
+slack.
+
+- **Tiles.** 3x2 fits at a placement density of 80 %. All checks pass: precheck with
+  DRC and antenna, the gate-level test and the linter. That is 6 tiles instead of 8.
+- **Clock.** The filter chain computes a whole sample in one cycle, and in the slow
+  corner that takes more than 100 ns. At 200 ns there are no setup or hold violations in
+  any of the 9 corners. The slow-corner slack is smaller than 200 ns minus the 10 MHz
+  path delay, because the tools size the cells to the looser constraint. A sample still
+  takes about 12 cycles with the handshake: 2.4 us at 5 MHz, against 5 ms between
+  samples.
+- **Open.** The 5 MHz run still reports 1,795 max-slew violations (most in the slow
+  corner), 70 max-fanout and 5 max-cap violations. The precheck does not check them.
+  The likely source is the high-fanout enables of the delay lines. Buffering them is the
+  next physical-design step.
+- **Power.** The summary's 0.21 W comes from OpenSTA's default switching activity, not
+  from this design. The delay lines shift once per sample. A real estimate needs
+  activity from simulation.

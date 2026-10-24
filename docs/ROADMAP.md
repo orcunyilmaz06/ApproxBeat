@@ -34,11 +34,13 @@ Shuttle dates were checked against <https://tinytapeout.com/runs> on 2026-10-19.
   `docs/info.md` and `test/` follow the ttgf-verilog-template, and the pin-level test
   passes on the smoke vectors. The whole chip has 1,458 flip-flops and 5,392 logic cells
   (D20).
+- **Public repository and first hardening, done (2026-10-23).**
+  github.com/orcunyilmaz06/ApproxBeat is public under Apache-2.0. LibreLane on GF180
+  passes gds, precheck (DRC, antenna) and the gate-level test. The design fits 3x2 tiles
+  at 76 % utilization, and timing closes at 5 MHz in every corner (D22, D23).
   Next:
-  - A GitHub repository, so that the TT GitHub Actions can harden the design (owner).
-  - LibreLane on GF180: the real area, the tile count (4x2 estimated) and timing at
-    10 MHz.
-  - The rest of `info.yaml`: author, and a license for the repository (owner).
+  - The Tiny Tapeout submission for TTGF26c, before 2026-12-07 (owner: account, payment).
+  - The accuracy-area front: approximate variants through LibreLane.
 
 ## Shuttles
 

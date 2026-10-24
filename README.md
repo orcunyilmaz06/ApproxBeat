@@ -25,9 +25,9 @@ Tapeout chip.
 | Area step 2: classify the peak straight from the peak detector | done; 1,435 flip-flops and 5,441 logic cells (D18) |
 | Word length of `sq`: chosen on DS1, checked on DS2 | not confirmed; v1 keeps 16 bits, the RTL takes it as a parameter (D19) |
 | Tiny Tapeout wrapper (`src/project.v`): pins, handshake, `info.yaml`, pin-level test | done; the smoke vectors pass through the chip pins; 1,458 flip-flops and 5,392 logic cells for the whole chip (D20) |
-| GitHub repository, LibreLane on GF180 | next |
+| Public repository; LibreLane on GF180 through the Tiny Tapeout GitHub Actions | done; 3x2 tiles at 76 % utilization, precheck (DRC, antenna) and gate-level test pass, timing closes at 5 MHz in all 9 corners (D22, D23) |
 | LibreLane on IHP SG13G2, for the v2 variants | planned |
-| Tiny Tapeout | target TTGF26c, closes 2026-12-07 |
+| Tiny Tapeout submission | next: TTGF26c, closes 2026-12-07 |
 
 Plan and dates: [docs/ROADMAP.md](docs/ROADMAP.md).
 

@@ -16,8 +16,9 @@ predictivity. Source, evaluation and design decisions: the project repository (R
 `docs/decisions.md`).
 
 The host hands the chip one sample at a time with a four-phase handshake, so the clock
-can be anything from a few kHz to the design's maximum. 10 MHz is nominal. A sample
-takes 4 to 13 clock cycles to process, plus the handshake.
+can be anything from a few kHz up to 5 MHz, where timing closes in every process
+corner. A sample takes 4 to 13 clock cycles to process, plus the handshake, so even a
+slow clock keeps far ahead of 200 samples per second.
 
 | Pin | Direction | Function |
 |---|---|---|
